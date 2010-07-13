@@ -49,6 +49,14 @@ module KATCP
       @lines[-1] && @lines[-1][0][0,1] == '!'
     end
 
+    # Returns status from reply line if complete, otherwise
+    # <tt>'incomplete'</tt>.
+    #
+    # TODO: Return +nil+ if incomplete?
+    def status
+      complete? ? @lines[-1][1] : 'incomplete'
+    end
+
     # Rejoins words into lines and lines into one String
     def to_s
       @lines.map do |line|
