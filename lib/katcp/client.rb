@@ -11,27 +11,38 @@ module KATCP
   # stored as an Array (of Strings) whose elements are the decoded "words"
   # (which may contain embedded spaces) of the reply.
   class Response
+    # Creates a new, empty Response object
     def initialize
       @lines = []
     end
 
+    # Pushes +line+ onto +self+.  +line+ must be an Array of words (each of
+    # which may contain embedded spaces).
     def <<(line)
+      raise TypeError.new('expected Array') unless Array === line
       @lines << line
     end
 
+    # Returns number of lines in +self+ including all inform lines and the
+    # reply line, if present.
     def length
       @lines.length
     end
 
+    # Returns subset of lines.  Similar to Array#[].
     def [](*args)
       @lines[*args]
     end
 
+    # Returns name of request corresponding to +self+ if complete, otherwise
+    # nil.
     def reqname
       # All but first character of first word of last line, if complete
       @lines[-1][0][1..-1] if complete?
     end
 
+    # Returns true if at least one line exists and the most recently added line
+    # is a reply line.
     def complete?
       # If at least one line exists, return true if last line, first word, first
       # character is '!'.
@@ -45,6 +56,7 @@ module KATCP
       end.join("\n")
     end
 
+    # Provides a terse summary of +self+.
     def inspect
       s = "#<KATCP::Response:0x#{object_id.to_s(16)}>("
       if complete? && @lines.length > 1
