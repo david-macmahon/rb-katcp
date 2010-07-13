@@ -6,11 +6,10 @@ require 'katcp/util'
 # Holds KATCP related classes etc.
 module KATCP
 
-  # Class that holds response to request
-  # Bascially like an Array with each element representing a line of the
-  # server's response.  Each "line" is stored as an Array (of Strings) whose
-  # elements are the decoded "words" (which may contain embedded spaces) of the
-  # reply.
+  # Class that holds response to request.  Bascially like an Array with each
+  # element representing a line of the server's response.  Each "line" is
+  # stored as an Array (of Strings) whose elements are the decoded "words"
+  # (which may contain embedded spaces) of the reply.
   class Response
     def initialize
       @lines = []
@@ -29,7 +28,8 @@ module KATCP
     end
 
     def complete?
-      # Last line, first word, first character
+      # If at least one line exists, return true if last line, first word, first
+      # character is '!'.
       @lines[-1] && @lines[-1][0][0,1] == '!'
     end
 
