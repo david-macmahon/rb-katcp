@@ -44,7 +44,7 @@ module KATCP
       s = "#<KATCP::Response:0x#{object_id.to_s(16)}>("
       if complete? && @lines.length > 1
         s += "#{length-1} lines)"
-      elif !complete?
+      elsif !complete?
         s += "#{length} lines, incomplete)"
       end
     end
