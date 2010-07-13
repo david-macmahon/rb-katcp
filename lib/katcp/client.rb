@@ -27,6 +27,11 @@ module KATCP
       @lines[*args]
     end
 
+    def reqname
+      # All but first character of first word of last line, if complete
+      @lines[-1][0][1..-1] if complete?
+    end
+
     def complete?
       # If at least one line exists, return true if last line, first word, first
       # character is '!'.
