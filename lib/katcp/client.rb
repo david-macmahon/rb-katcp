@@ -237,8 +237,8 @@ module KATCP
     end
 
     # Define #help explicitly so output can be sorted.
-    def help
-      request(:help).sort!
+    def help(*args)
+      request(:help, *args).sort!
     end
 
     # Translates calls to missing methods into KATCP requests.
