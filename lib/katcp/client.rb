@@ -11,9 +11,29 @@ module KATCP
   # stored as an Array (of Strings) whose elements are the decoded "words"
   # (which may contain embedded spaces) of the reply.
   class Response
+
+    # Default inspect_mode for new Response objects.  When running in IRB,
+    # default is :to_s, otherwise, default is nil.
+    @@inspect_mode = (defined?(IRB) ? :to_s : nil)
+
+    # Returns default inspect mode for new Response objects.
+    def self.inspect_mode
+      @@inspect_mode
+    end
+
+    # Sets default inspect mode for new Response objects.
+    def self.inspect_mode=(mode)
+      @@inspect_mode = mode
+    end
+
+    # Inspect mode for +self+. +nil+ or <tt>:inspect</tt> means terse form.
+    # Other symbol (typically <tt>:to_s</tt>) means call that method
+    attr :inspect_mode
+
     # Creates a new, empty Response object
-    def initialize
+    def initialize(inspect_mode=@@inspect_mode)
       @lines = []
+      @inspect_mode = inspect_mode
     end
 
     # Pushes +line+ onto +self+.  +line+ must be an Array of words (each of
@@ -64,13 +84,21 @@ module KATCP
       end.join("\n")
     end
 
-    # Provides a terse summary of +self+.
-    def inspect
-      s = "#<KATCP::Response:0x#{object_id.to_s(16)}>("
-      if complete? && @lines.length > 1
-        s += "#{length-1} lines)"
-      elsif !complete?
-        s += "#{length} lines, incomplete)"
+    # Provides a terse (or not so terse) summary of +self+ depending on value
+    # of +mode+, which defaults to @inspect_mode.
+    def inspect(mode=@inspect_mode)
+      if mode && mode != :inspect?
+        send(mode) rescue inspect(nil)
+      else
+        s = "#<KATCP::Response:0x#{object_id.to_s(16)}> "
+        if complete?
+          s += "#{status}"
+          if @lines.length > 1
+            s += ", #{length-1} lines"
+          end
+        else
+          s += "#{length} lines, incomplete"
+        end
       end
     end
   end
@@ -190,14 +218,24 @@ module KATCP
       resp
     end
 
+    # Define a help method so that irb won't give us one.
+    def help
+      request(:help)
+    end
+
     # Translates calls to mising methods into KATCP requests
     def method_missing(sym, *args)
       request(sym, *args)
     end
 
-    # Provides terse representation
+    # Provides terse string representation of +self+.
+    def to_s
+      s = "#{@remote_host}:#{@remote_port}"
+    end
+
+    # Provides more detailed String representation of +self+
     def inspect
-      "#<#{self.class.name}:0x#{object_id.to_s(16)}>(#{@remote_host}:#{@remote_port})"
+      "#<#{self.class.name}:0x#{object_id.to_s(16)} #{to_s}>"
     end
 
   end # class Client
