@@ -78,7 +78,7 @@ module KATCP
     # Returns status from reply line if complete, otherwise
     # <tt>'incomplete'</tt>.
     #
-    # TODO: Return +nil+ if incomplete?
+    #   TODO: Return nil if incomplete?
     def status
       complete? ? @lines[-1][1] : 'incomplete'
     end
@@ -103,7 +103,7 @@ module KATCP
     end
 
     # Provides a terse (or not so terse) summary of +self+ depending on value
-    # of +mode+, which defaults to @inspect_mode.
+    # of +mode+.
     def inspect(mode=@inspect_mode)
       if mode && mode != :inspect?
         send(mode) rescue inspect(nil)
@@ -124,8 +124,8 @@ module KATCP
   # Facilitates talking to a KATCP server.
   class Client
     # Creates a KATCP client that connects to a KATCP server at +remote_host+
-    # on +remote_port+.  If local_host and local_port are specified, then those
-    # parameters are used on the local end to establish the connection.
+    # on +remote_port+.  If +local_host+ and +local_port+ are specified, then
+    # those parameters are used on the local end to establish the connection.
     def initialize(remote_host, remote_port=7147, local_host=nil, local_port=nil)
 
       # Save remote_host and remote_port for #inspect
@@ -194,12 +194,12 @@ module KATCP
       end # Thread.new block
     end
 
-    # @inform_handler is an object for handling asynchronous "inform" messages.
-    # The inform_handler must support the #<< insertion operator.
-    # If nil, all asynchronous "inform" messages are dropped.
-    # Defaults to STDERR.
-    # TODO: Pass un-decoded katcp String?
-    # TODO: Make this be a Proc object (or at least support it)?
+    # object for handling asynchronous "inform" messages.  The inform_handler
+    # must support the <tt><<</tt> insertion operator.  If nil, all
+    # asynchronous "inform" messages are dropped.  Defaults to STDERR.
+    #
+    #   TODO: Pass un-decoded katcp String?
+    #   TODO: Make this be a Proc object (or at least support it)?
     attr :inform_handler
 
     # TODO: Have a separate log_handler?
@@ -207,7 +207,7 @@ module KATCP
     # Sends request +name+ with +arguments+ to server.  Returns KATCP::Response
     # object.
     #
-    # TODO: Return reply as well or just raise exception if reply is not OK?
+    #   TODO: Return reply as well or just raise exception if reply is not OK?
     def request(name, *arguments)
       # Encode name to allow Symbols and to allow _ between words (since that
       # is more natural for Symbols)
@@ -236,12 +236,12 @@ module KATCP
       resp
     end
 
-    # Define #help explicitly so output can be sorted
+    # Define #help explicitly so output can be sorted.
     def help
       request(:help).sort!
     end
 
-    # Translates calls to mising methods into KATCP requests
+    # Translates calls to missing methods into KATCP requests.
     def method_missing(sym, *args)
       request(sym, *args)
     end

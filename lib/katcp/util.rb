@@ -20,7 +20,7 @@ class String
     dup.encode_katcp!
   end
   
-  # In-place decodes +self+ into KATCP format.  Always returns +self+.
+  # In-place decodes +self+ from KATCP format.  Always returns +self+.
   def decode_katcp!
     self == '\@' ? self[0..-1] = '' : self.gsub!(/\\[\\_0nret]/) do |s|
       case s
