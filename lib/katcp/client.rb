@@ -83,6 +83,11 @@ module KATCP
       complete? ? @lines[-1][1] : 'incomplete'
     end
 
+    # Returns true if status is <tt>'ok'</tt>.
+    def ok?
+      'ok' == status
+    end
+
     # Sorts the list of inform lines in-place and returns +self+
     def sort!
       n = complete? ? length-1 : length
@@ -100,6 +105,29 @@ module KATCP
       @lines.map do |line|
         line.join(' ')
       end.join("\n")
+    end
+
+    # Returns contents of reply line ("words" joined by spaces) after status
+    # word if <tt>ok?</tt> returns true.  Returns +nil+ if <tt>ok?</tt> is
+    # false or no payload exists.  If +args+ are given, they are sent to the
+    # payload String (via String#send) and the results are returned.  If an
+    # error is raised during conversion, the payload string itself will be
+    # returned.
+    #
+    # For example, passing <tt>:to_i</tt> will result in conversion of payload
+    # String to Integer via String#to_i.  The String class can be
+    # monkey-patched as needed for additional conversion options.
+    def payload(*args)
+      if ok?
+        s = @lines[-1][2..-1].join(' ')
+        return s if args.empty?
+        begin
+          s.send(*args)
+        rescue
+          warn $!
+          s
+        end
+      end
     end
 
     # Provides a terse (or not so terse) summary of +self+ depending on value
