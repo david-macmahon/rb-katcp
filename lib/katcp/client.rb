@@ -30,10 +30,16 @@ module KATCP
     # Other symbol (typically <tt>:to_s</tt>) means call that method
     attr :inspect_mode
 
-    # Creates a new, empty Response object
-    def initialize(inspect_mode=@@inspect_mode)
-      @lines = []
+    # Creates a new Response object with given inspect_mode and lines Array
+    def initialize(inspect_mode=@@inspect_mode, lines=[])
+      raise TypeError.new('lines must be an Array') unless Array === lines
+      @lines = lines
       @inspect_mode = inspect_mode
+    end
+
+    # Returns a deep copy of self
+    def dup
+      self.class.new(@inspect_mode, @lines.map {|words| words.map {|word| word.dup}})
     end
 
     # Pushes +line+ onto +self+.  +line+ must be an Array of words (each of
@@ -75,6 +81,18 @@ module KATCP
     # TODO: Return +nil+ if incomplete?
     def status
       complete? ? @lines[-1][1] : 'incomplete'
+    end
+
+    # Sorts the list of inform lines in-place and returns +self+
+    def sort!
+      n = complete? ? length-1 : length
+      @lines[0,n] = @lines[0,n].sort if n > 0
+      self
+    end
+
+    # Returns a copy of +self+ with inform lines sorted
+    def sort
+      dup.sort!
     end
 
     # Rejoins words into lines and lines into one String
@@ -218,9 +236,9 @@ module KATCP
       resp
     end
 
-    # Define a help method so that irb won't give us one.
+    # Define #help explicitly so output can be sorted
     def help
-      request(:help)
+      request(:help).sort!
     end
 
     # Translates calls to mising methods into KATCP requests
