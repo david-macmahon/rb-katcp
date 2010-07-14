@@ -164,7 +164,7 @@ module KATCP
       @socket = TCPSocket.new(remote_host, remote_port, local_host, local_port)
 
       # Init attribute(s)
-      @inform_handler = STDERR
+      @informs = []
 
       # @reqlock is the Monitor object used to serialize requests sent to the
       # KATCP server.  Threads should not write to @socket or read from @rxq
@@ -206,13 +206,15 @@ module KATCP
               # Enqueue words to @rxq
               @rxq.enq(words)
             else
-              # Must be asynchronous inform message
-              @inform_handler << line.decode_katcp! if @inform_handler
+              # Must be asynchronous inform message, add to list.
+              line.decode_katcp!
+              line.chomp!
+              @informs << line
             end
           else
             # Malformed line
-            # TODO: Log error bettero?
-            STDERR.puts "malformed line: #{line.inspect}"
+            # TODO: Log error better?
+            warn "malformed line: #{line.inspect}"
           end
 
         end # @socket.each_line block
@@ -222,15 +224,7 @@ module KATCP
       end # Thread.new block
     end
 
-    # object for handling asynchronous "inform" messages.  The inform_handler
-    # must support the <tt><<</tt> insertion operator.  If nil, all
-    # asynchronous "inform" messages are dropped.  Defaults to STDERR.
-    #
-    #   TODO: Pass un-decoded katcp String?
-    #   TODO: Make this be a Proc object (or at least support it)?
-    attr :inform_handler
-
-    # TODO: Have a separate log_handler?
+    # TODO: Have a log_handler?
 
     # Sends request +name+ with +arguments+ to server.  Returns KATCP::Response
     # object.
@@ -264,6 +258,13 @@ module KATCP
       resp
     end
 
+    # Returns Array of inform messages.  If +clear+ is +true+, clear messages.
+    def informs(clear=false)
+      msgs = @informs
+      @informs = [] if clear
+      msgs
+    end
+
     # Define #help explicitly so output can be sorted.
     def help(*args)
       request(:help, *args).sort!
@@ -281,7 +282,7 @@ module KATCP
 
     # Provides more detailed String representation of +self+
     def inspect
-      "#<#{self.class.name}:0x#{object_id.to_s(16)} #{to_s}>"
+      "#<#{self.class.name} #{to_s} (#{@informs.length} inform messages)>"
     end
 
   end # class Client
