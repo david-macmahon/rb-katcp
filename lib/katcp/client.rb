@@ -148,7 +148,7 @@ module KATCP
       request(:configure, *args)
     end
 
-    # Issues a halt request to the server.
+    # Issues a halt request to the server.  Shuts down the system.
     def halt(*args)
       request(:halt, *args)
     end
@@ -158,41 +158,53 @@ module KATCP
       request(:help, *args).sort!
     end
 
-    # Issues a log_level request to the server.
+    # call-seq:
+    #   log_level([priority])
+    #
+    # Set or query the minimum reported log priority.
     def log_level(*args)
       request(:log_level, *args)
     end
 
-    # Issues a mode request to the server.
+    # call-seq:
+    #   mode([new_mode])
+    #
+    # Set or query the current mode.
     def mode(*args)
       request(:mode, *args)
     end
 
-    # Issues a restart request to the server.
+    # Issues a restart request to the server to restart the remote system.
     def restart(*args)
       request(:restart, *args)
     end
 
-    # Issues a sensor_list request to the server.  Response inform lines are
-    # sorted.
+    # Dumps the sensor tree.
+    def sensor_dump(*args)
+      request(:sensor_dump, *args)
+    end
+
+    # Queries for list of available sensors.  Response inform lines are sorted.
     def sensor_list(*args)
       request(:sensor_list, *args).sort!
     end
 
-    # Issues a sensor_sampling request to the server.
-    def sensor_sampling(*args)
-      request(:sensor_sampling, *args)
+    # call-seq:
+    #   sensor_sampling(sensor[, strategy[, parameter]])
+    #
+    # Quesry or set sampling parameters for a sensor.
+    def sensor_sampling(sensor, *args)
+      request(:sensor_sampling, sensor, *args)
     end
 
-    # Issues a sensor_value request to the server.  Response inform lines are
-    # sorted.
-    def sensor_value(*args)
-      request(:sensor_value, *args).sort!
+    # Query a sensor.
+    def sensor_value(sensor)
+      request(:sensor_value, sensor)
     end
 
     # Issues a watchdog request to the server.
-    def watchdog(*args)
-      request(:watchdog, *args)
+    def watchdog
+      request(:watchdog)
     end
 
     alias :ping :watchdog
