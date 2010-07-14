@@ -123,11 +123,6 @@ module KATCP
       msgs
     end
 
-    # Define #help explicitly so output can be sorted.
-    def help(*args)
-      request(:help, *args).sort!
-    end
-
     # Translates calls to missing methods into KATCP requests.
     def method_missing(sym, *args)
       request(sym, *args)
@@ -142,6 +137,65 @@ module KATCP
     def inspect
       "#<#{self.class.name} #{to_s} (#{@informs.length} inform messages)>"
     end
+
+    # Issues a client_list request to the server.
+    def client_list(*args)
+      request(:client_list, *args)
+    end
+
+    # Issues a configure request to the server.
+    def configure(*args)
+      request(:configure, *args)
+    end
+
+    # Issues a halt request to the server.
+    def halt(*args)
+      request(:halt, *args)
+    end
+
+    # Issues a help request to the server.  Response inform lines are sorted.
+    def help(*args)
+      request(:help, *args).sort!
+    end
+
+    # Issues a log_level request to the server.
+    def log_level(*args)
+      request(:log_level, *args)
+    end
+
+    # Issues a mode request to the server.
+    def mode(*args)
+      request(:mode, *args)
+    end
+
+    # Issues a restart request to the server.
+    def restart(*args)
+      request(:restart, *args)
+    end
+
+    # Issues a sensor_list request to the server.  Response inform lines are
+    # sorted.
+    def sensor_list(*args)
+      request(:sensor_list, *args).sort!
+    end
+
+    # Issues a sensor_sampling request to the server.
+    def sensor_sampling(*args)
+      request(:sensor_sampling, *args)
+    end
+
+    # Issues a sensor_value request to the server.  Response inform lines are
+    # sorted.
+    def sensor_value(*args)
+      request(:sensor_value, *args).sort!
+    end
+
+    # Issues a watchdog request to the server.
+    def watchdog(*args)
+      request(:watchdog, *args)
+    end
+
+    alias :ping :watchdog
 
   end # class Client
 end # module KATCP
