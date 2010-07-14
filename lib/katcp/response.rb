@@ -5,7 +5,7 @@ module KATCP
 
   # Class that holds response to request.  Bascially like an Array with each
   # element representing a line of the server's response.  Each "line" is
-  # stored as an Array (of Strings) whose elements are the decoded "words"
+  # stored as an Array (of Strings) whose elements are the unescaped "words"
   # (which may contain embedded spaces) of the reply.
   class Response
 

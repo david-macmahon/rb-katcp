@@ -4,8 +4,8 @@ require 'narray'
 
 # String add-ons for KATCP
 class String
-  # In-place encodes +self+ into KATCP format.  Always returns +self+.
-  def encode_katcp!
+  # In-place escapes +self+ into KATCP format.  Always returns +self+.
+  def katcp_escape!
     empty? ? self[0..-1] = '\@' : self.gsub!(/[\\ \0\n\r\e\t]/) do |s|
       case s
       when "\\": '\\'
@@ -20,13 +20,13 @@ class String
     self
   end
 
-  # Encodes +self+ into KATCP format and returns new String.
-  def encode_katcp
-    dup.encode_katcp!
+  # Escapes +self+ into KATCP format and returns new String.
+  def katcp_escape
+    dup.katcp_escape!
   end
   
-  # In-place decodes +self+ from KATCP format.  Always returns +self+.
-  def decode_katcp!
+  # In-place unescapes +self+ from KATCP format.  Always returns +self+.
+  def katcp_unescape!
     self == '\@' ? self[0..-1] = '' : self.gsub!(/\\[\\_0nret]/) do |s|
       case s
       when '\\': "\\"
@@ -41,9 +41,9 @@ class String
     self
   end
 
-  # Decodes +self+ from KATCP format and returns new String.
-  def decode_katcp
-    dup.decode_katcp!
+  # Unescapes +self+ from KATCP format and returns new String.
+  def katcp_unescape
+    dup.katcp_unescape!
   end
 
   # call-seq:

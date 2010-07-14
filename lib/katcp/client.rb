@@ -43,8 +43,8 @@ module KATCP
         # endings.  Currently only recognizes fixed strings, so for now go with
         # "\n".
         while line = @socket.gets("\n") do
-          # Split line into words and decode each word
-          words = line.split.map! {|w| w.decode_katcp!}
+          # Split line into words and unescape each word
+          words = line.split.map! {|w| w.katcp_unescape!}
           # Handle requests, replies, and informs based on first character of
           # first word.
           case words[0][0,1]
@@ -65,7 +65,7 @@ module KATCP
               @rxq.enq(words)
             else
               # Must be asynchronous inform message, add to list.
-              line.decode_katcp!
+              line.katcp_unescape!
               line.chomp!
               @informs << line
             end
@@ -89,11 +89,11 @@ module KATCP
     #
     #   TODO: Return reply as well or just raise exception if reply is not OK?
     def request(name, *arguments)
-      # Encode name to allow Symbols and to allow _ between words (since that
-      # is more natural for Symbols)
+      # Massage name to allow Symbols and to allow '_' between words (since
+      # that is more natural for Symbols) in place of '-'
       name = name.to_s.gsub('_','-')
-      # Encode arguments
-      arguments.map! {|arg| arg.to_s.encode_katcp}
+      # Escape arguments
+      arguments.map! {|arg| arg.to_s.katcp_escape}
 
       # Create response
       resp = Response.new
