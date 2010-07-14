@@ -28,15 +28,29 @@ module KATCP
     attr :inspect_mode
 
     # Creates a new Response object with given inspect_mode and lines Array
-    def initialize(inspect_mode=@@inspect_mode, lines=[])
-      raise TypeError.new('lines must be an Array') unless Array === lines
-      @lines = lines
+    def initialize(inspect_mode=@@inspect_mode, lines_array=[])
+      raise TypeError.new('lines must be an Array') unless Array === lines_array
+      @lines = lines_array
       @inspect_mode = inspect_mode
+    end
+
+    # Returns a copy contained lines
+    def lines
+      @lines.map {|words| words.map {|word| word.dup}}
+    end
+
+    # Greps through lines for +pattern+.  If +join+ is neither +nil+ nor
+    # +false+ (the default is ' ', i.e. a space), then the "words" of each
+    # matching line are joined together using +join+ as a delimiter.
+    def grep(pattern, join=' ')
+      matches = @lines.find_all {|l| !l.grep(pattern).empty?}
+      matches.map! {|l| l.join(join)} if join
+      matches
     end
 
     # Returns a deep copy of self
     def dup
-      self.class.new(@inspect_mode, @lines.map {|words| words.map {|word| word.dup}})
+      self.class.new(@inspect_mode, lines)
     end
 
     # Pushes +line+ onto +self+.  +line+ must be an Array of words (each of
