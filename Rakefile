@@ -26,6 +26,7 @@ spec = Gem::Specification.new do |s|
     'lib/katcp.rb',
     'lib/katcp/client.rb',
     'lib/katcp/irb.rb',
+    'lib/katcp/response.rb',
     'lib/katcp/util.rb'
   ]
   s.require_paths = ['lib']
