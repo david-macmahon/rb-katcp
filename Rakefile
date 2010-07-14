@@ -39,7 +39,7 @@ spec = Gem::Specification.new do |s|
   #s.extensions = %w[ ext/extconf.rb ]
 
   # Documentation
-  #s.rdoc_options = []
+  s.rdoc_options = %w[-m lib/katcp.rb]
   s.has_rdoc = true
   #s.extra_rdoc_files = []
 
