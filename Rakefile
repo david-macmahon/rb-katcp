@@ -12,7 +12,7 @@ spec = Gem::Specification.new do |s|
     EOD
   #s.platform = Gem::Platform::Ruby
   s.required_ruby_version = '>= 1.8.1'
-  #s.add_dependency('narray', '>= 0.5.9')
+  s.add_dependency('narray', '>= 0.5.9')
 
   # About
   s.authors = 'David MacMahon'

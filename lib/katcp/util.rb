@@ -1,3 +1,8 @@
+require 'narray'
+
+#TODO: Create ntoh! (etc) methods for narray
+
+# String add-ons for KATCP
 class String
   # In-place encodes +self+ into KATCP format.  Always returns +self+.
   def encode_katcp!
@@ -39,5 +44,17 @@ class String
   # Decodes +self+ from KATCP format and returns new String.
   def decode_katcp
     dup.decode_katcp!
+  end
+
+  # call-seq:
+  #   to_na(typecode[,size,...][,byteswap=:ntoh]) -> NArray
+  #
+  # Convert String to NArray accoring to +typecode+ and call byte swap method
+  # given by Symbol +byteswap+.
+  def to_na(typecode, *args)
+    byteswap = (Symbol === args[-1]) ? args.pop : :ntoh
+    na = NArray.to_na(self, typecode, *args)
+    na = na.send(byteswap) if byteswap
+    na
   end
 end
