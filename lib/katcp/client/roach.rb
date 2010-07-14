@@ -3,9 +3,11 @@ require 'katcp/client'
 # Holds KATCP related classes etc.
 module KATCP
 
-  # Facilitates talking to +tcpborphserver2+, a KATCP server implementation
-  # that runs on ROACH boards.  Mostly just adds convenience methods for tab
-  # completion in irb and conversion of binary payload data.
+  # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
+  # implementation that runs on ROACH boards.  Mostly just adds convenience
+  # methods for tab completion in irb.
+  #
+  #   TODO: Add conveneince methods for converting binary payload data.
   class RoachClient < Client
 
     # Deletes gateware image file named by +image_file+.
