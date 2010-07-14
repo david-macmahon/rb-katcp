@@ -25,6 +25,7 @@ spec = Gem::Specification.new do |s|
     'Rakefile',
     'lib/katcp.rb',
     'lib/katcp/client.rb',
+    'lib/katcp/client/roach.rb',
     'lib/katcp/irb.rb',
     'lib/katcp/response.rb',
     'lib/katcp/util.rb'

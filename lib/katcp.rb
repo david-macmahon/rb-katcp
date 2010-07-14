@@ -52,4 +52,5 @@
 # * Only the client side is implemented.
 # * Only TCP communication is supported (i.e. no RS/232 support).
 
-require 'katcp/client'
+# This pulls in everything
+require 'katcp/client/roach'
