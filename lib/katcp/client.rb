@@ -153,8 +153,18 @@ module KATCP
       request(:halt, *args)
     end
 
-    # Issues a help request to the server.  Response inform lines are sorted.
+    # call-seq:
+    #   help -> KATCP::Response
+    #   help(name) -> KATCP::Response
+    #
+    # Issues a help request to the server.  If +name+ is a Symbol, all '_'
+    # characters are changed to '-'.  Response inform lines are sorted.
     def help(*args)
+      # Change '_' to '-' in Symbol args
+      args.map! do |arg|
+        arg = arg.to_s.gsub('-', '_') if Symbol === arg
+        arg
+      end
       request(:help, *args).sort!
     end
 
