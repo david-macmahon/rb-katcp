@@ -1,4 +1,5 @@
 require 'katcp/util'
+require 'katcp/version'
 
 # Holds KATCP related classes etc.
 module KATCP

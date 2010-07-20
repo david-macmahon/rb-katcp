@@ -1,10 +1,13 @@
 require 'rubygems'
 require 'rake/gempackagetask'
 
+# Get KATCP::VERSION
+require 'lib/katcp/version.rb'
+
 spec = Gem::Specification.new do |s|
   # Basics
   s.name = 'katcp'
-  s.version = '0.0.1'
+  s.version = KATCP::VERSION
   s.summary = 'KATCP library for Ruby'
   s.description = <<-EOD
     Provides KATCP client library for Ruby.  KATCP is the Karoo Array Telescope
@@ -29,6 +32,7 @@ spec = Gem::Specification.new do |s|
     lib/katcp/irb.rb
     lib/katcp/response.rb
     lib/katcp/util.rb
+    lib/katcp/version.rb
     examples/listdev.rb
   ]
   s.require_paths = ['lib']
