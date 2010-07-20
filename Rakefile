@@ -29,6 +29,7 @@ spec = Gem::Specification.new do |s|
     lib/katcp/irb.rb
     lib/katcp/response.rb
     lib/katcp/util.rb
+    examples/listdev.rb
   ]
   s.require_paths = ['lib']
   #s.autorequire = nil
