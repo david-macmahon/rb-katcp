@@ -1,0 +1,109 @@
+--
+
+ This file includes an RDoc hack so that links can be made to open up into a
+ new frame rather then the current frame.
+ 
+ The "trick" is to append ``"target="_top'' to the URL.
+
+++
+
+= Ruby/KATCP
+
+== Introduction
+
+<b>Ruby/KATCP</b> is a Ruby extension for communicating via the Karoo Array
+Telescope Control Protocol (KATCP).  More information about KATCP can be
+found at the {CASPER
+Wiki}[http://casper.berkeley.edu/wiki/KATCP"target="_top], including the {KATCP
+specification
+}[http://casper.berkeley.edu/wiki/images/1/11/NRF-KAT7-6.0-IFCE-002-Rev4.pdf"target="_top]
+in PDF format.
+
+== Features
+
+* Provides a base KATCP client supporting the functionality described in the
+  KATCP specification.
+
+* Provides an extended KATCP client to support the <tt>tcpborphserver2</tt>
+  KATCP server implementation on {ROACH
+  }[http://casper.berkeley.edu/wiki/ROACH"target="_top] boards.
+
+* Automatically provides support for all current and any future KATCP request
+  types through the use of Ruby's +method_missing+ feature.
+
+* Handles all escaping and unescaping of text transferred over KATCP.
+
+* Provides convenient and flexible ways of converting packed binary data to
+  various numerical formats, including Array and {NArray
+  }[http://narray.rubyforge.org/"target="_top] objects.
+
+* Plays nicely with +irb+, the interactive Ruby shell.
+
+== Installation
+
+{Ruby/KATCP}[http://rb-katcp.rubyforge.org/"target="_top] can be installed
+via RubyGems[http://www.rubygems.org/"target="_top]:
+
+  gem install katcp
+
+Ruby/KAT<b></b>CP was developed using Ruby 1.8.6 and 1.8.7.  It has not been
+tested against Ruby 1.9 (yet).
+
+== Documentation
+
+Documentation is available on the {Ruby/KATCP
+Homepage}[http://rb-katcp.rubyforge.org/"target="_top] and is also installed
+locally as part of the gem-based installation.  To view the documentation
+locally, run
+
+  gem server
+
+then point your browser to <tt>http</tt><tt>://localhost:8808/</tt> and
+navigate to (and follow) the katcp <b>[rdoc]</b> link.  You can get more
+information about RubyGem's documenation server by running:
+
+  gem help server
+
+== Example
+
+This example script, <tt>listdev.rb</tt>, can be used to list the devices on a
+given ROACH host...
+
+  #!/usr/bin/env ruby
+  
+  # listdev.rb - list devices on a ROACH
+  #
+  #   $ listdev.rb roach030111
+  #   XAUI0
+  #   acc_len
+  #   ant_levels
+  #   ctrl
+  #   gbe0
+  #   gbe_ip0
+  #   gbe_port
+  #   [...]
+  
+  require 'rubygems'
+  require 'katcp'
+  
+  # Abort if no hostname is given
+  raise "\nusage: #{$0} HOSTNAME" unless ARGV[0]
+  
+  # Create RoachClient object
+  roach = KATCP::RoachClient.new(ARGV[0])
+  
+  # Get list of devices via "?listdev" KATCP request.
+  # Save returned KATCP::Response object in "resp".
+  resp = roach.listdev
+  
+  # Extract first "word" of each line except the last
+  # one, which will be a "!listdev ok" reply line.
+  devices = resp.lines[0..-2].map {|l| l[1]}
+  
+  # Output device list
+  puts devices
+
+== Current Limitations
+
+* Only the client side is implemented.
+* Only TCP communication is supported (i.e. no RS/232 support).

@@ -17,18 +17,18 @@ spec = Gem::Specification.new do |s|
   # About
   s.authors = 'David MacMahon'
   s.email = 'davidm@astro.berkeley.edu'
-  s.homepage = 'http://katcp.rubyforge.org/'
-  s.rubyforge_project = 'katcp' 
+  s.homepage = 'http://rb-katcp.rubyforge.org/'
+  s.rubyforge_project = 'rb-katcp' 
 
   # Files, Libraries, and Extensions
-  s.files = FileList[
-    'Rakefile',
-    'lib/katcp.rb',
-    'lib/katcp/client.rb',
-    'lib/katcp/client/roach.rb',
-    'lib/katcp/irb.rb',
-    'lib/katcp/response.rb',
-    'lib/katcp/util.rb'
+  s.files = %w[
+    README
+    lib/katcp.rb
+    lib/katcp/client.rb
+    lib/katcp/client/roach.rb
+    lib/katcp/irb.rb
+    lib/katcp/response.rb
+    lib/katcp/util.rb
   ]
   s.require_paths = ['lib']
   #s.autorequire = nil
@@ -40,9 +40,9 @@ spec = Gem::Specification.new do |s|
   #s.extensions = %w[ ext/extconf.rb ]
 
   # Documentation
-  s.rdoc_options = %w[-m lib/katcp.rb]
+  s.rdoc_options = ['-m', 'README', '--title', "Ruby/KATCP #{s.version} Documentation"]
   s.has_rdoc = true
-  #s.extra_rdoc_files = []
+  s.extra_rdoc_files = %w[README]
 
   # Testing TODO
   #s.test_files = [test/test.rb]
