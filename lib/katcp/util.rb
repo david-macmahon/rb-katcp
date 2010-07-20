@@ -47,7 +47,10 @@ class String
   end
 
   # call-seq:
-  #   to_na(typecode[,size,...][,byteswap=:ntoh]) -> NArray
+  #   to_na(typecode) -> NArray
+  #   to_na(typecode, byteswap) -> NArray
+  #   to_na(typecode,size[, ...]) -> NArray
+  #   to_na(typecode,size[, ...], byteswap) -> NArray
   #
   # Convert String to NArray accoring to +typecode+ and call byte swap method
   # given by Symbol +byteswap+.  Pass +nil+ for +byteswap+ to skip the byte
@@ -55,7 +58,7 @@ class String
   #
   # Because, as of this writing, KATCP servers typically run on big endian
   # systems which return binary payload data in network byte order, the default
-  # for byteswap is <tt>:ntoh</tt>, which converts from network byte order to
+  # +byteswap+ is <tt>:ntoh</tt>, which converts from network byte order to
   # host (i.e. native) order.
   def to_na(typecode, *args)
     # Default to :ntoh

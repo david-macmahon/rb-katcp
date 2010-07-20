@@ -107,3 +107,4 @@ given ROACH host...
 
 * Only the client side is implemented.
 * Only TCP communication is supported (i.e. no RS/232 support).
+* KATCP::RoachClient#uploadbof is not yet implemented.

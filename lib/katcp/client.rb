@@ -9,6 +9,7 @@ module KATCP
 
   # Facilitates talking to a KATCP server.
   class Client
+
     # Creates a KATCP client that connects to a KATCP server at +remote_host+
     # on +remote_port+.  If +local_host+ and +local_port+ are specified, then
     # those parameters are used on the local end to establish the connection.
@@ -84,14 +85,18 @@ module KATCP
 
     # TODO: Have a log_handler?
 
+    # call-seq:
+    #   request(name, *arguments) -> KATCP::Response
+    #
     # Sends request +name+ with +arguments+ to server.  Returns KATCP::Response
     # object.
     #
-    #   TODO: Return reply as well or just raise exception if reply is not OK?
+    #   TODO: Raise exception if reply is not OK?
     def request(name, *arguments)
       # Massage name to allow Symbols and to allow '_' between words (since
       # that is more natural for Symbols) in place of '-'
       name = name.to_s.gsub('_','-')
+
       # Escape arguments
       arguments.map! {|arg| arg.to_s.katcp_escape}
 
@@ -116,6 +121,9 @@ module KATCP
       resp
     end
 
+    # call-seq:
+    #   inform(clear=false) -> Array
+    #
     # Returns Array of inform messages.  If +clear+ is +true+, clear messages.
     def informs(clear=false)
       msgs = @informs
@@ -138,19 +146,28 @@ module KATCP
       "#<#{self.class.name} #{to_s} (#{@informs.length} inform messages)>"
     end
 
+    # call-seq:
+    #   client_list -> KATCP::Response
+    #
     # Issues a client_list request to the server.
-    def client_list(*args)
-      request(:client_list, *args)
+    def client_list
+      request(:client_list)
     end
 
+    # call-seq:
+    #   configure(*args) -> KATCP::Response
+    #
     # Issues a configure request to the server.
     def configure(*args)
       request(:configure, *args)
     end
 
+    # call-seq:
+    #   halt -> KATCP::Response
+    #
     # Issues a halt request to the server.  Shuts down the system.
-    def halt(*args)
-      request(:halt, *args)
+    def halt
+      request(:halt)
     end
 
     # call-seq:
@@ -169,49 +186,67 @@ module KATCP
     end
 
     # call-seq:
-    #   log_level([priority])
+    #   log_level -> KATCP::Response
+    #   log_level(priority) -> KATCP::Response
     #
-    # Set or query the minimum reported log priority.
+    # Query or set the minimum reported log priority.
     def log_level(*args)
       request(:log_level, *args)
     end
 
     # call-seq:
-    #   mode([new_mode])
+    #   mode -> KATCP::Response
+    #   mode(new_mode) -> KATCP::Response
     #
-    # Set or query the current mode.
+    # Query or set the current mode.
     def mode(*args)
       request(:mode, *args)
     end
 
+    # call-seq:
+    #   restart -> KATCP::Response
+    #
     # Issues a restart request to the server to restart the remote system.
-    def restart(*args)
-      request(:restart, *args)
+    def restart
+      request(:restart)
     end
 
+    # call-seq:
+    #   sensor_dump(*args) -> KATCP::Response
+    #
     # Dumps the sensor tree.
     def sensor_dump(*args)
       request(:sensor_dump, *args)
     end
 
+    # call-seq:
+    #   sensor_list(*args) -> KATCP::Response
+    #
     # Queries for list of available sensors.  Response inform lines are sorted.
     def sensor_list(*args)
       request(:sensor_list, *args).sort!
     end
 
     # call-seq:
-    #   sensor_sampling(sensor[, strategy[, parameter]])
+    #   sensor_sampling(sensor) -> KATCP::Response
+    #   sensor_sampling(sensor, strategy, *parameters) -> KATCP::Response
     #
     # Quesry or set sampling parameters for a sensor.
     def sensor_sampling(sensor, *args)
       request(:sensor_sampling, sensor, *args)
     end
 
+    # call-seq:
+    #   sensor_value(sensor) -> KATCP::Response
+    #
     # Query a sensor.
     def sensor_value(sensor)
       request(:sensor_value, sensor)
     end
 
+    # call-seq:
+    #   watchdog -> KATCP::Response
+    #
     # Issues a watchdog request to the server.
     def watchdog
       request(:watchdog)

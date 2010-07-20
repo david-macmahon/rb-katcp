@@ -34,11 +34,20 @@ module KATCP
       @inspect_mode = inspect_mode
     end
 
-    # Returns a copy contained lines
+    # call-seq:
+    #   lines -> Array of Arrays
+    #
+    # Returns a copy contained lines.  Each line is itself an Array of words.
     def lines
       @lines.map {|words| words.map {|word| word.dup}}
     end
 
+    # call-seq:
+    #   grep(pattern, join=' ') -> Array or Strings
+    #   grep(pattern, nil) -> Array of Arrays
+    #   grep(pattern, join=' ') {|line_array| ...}-> Array of Strings
+    #   grep(pattern, nil) {|line_array| ...}-> Array of ...
+    #
     # Greps through lines for +pattern+.  If a block is given, each line will
     # be passed to the block and replaced in the returned Array by the block's
     # return value.  If +join+ is non-nil (default is a space character), then
@@ -51,6 +60,9 @@ module KATCP
       matches
     end
 
+    # call-seq:
+    #   dup -> KATCP::Response
+    #
     # Returns a deep copy of self
     def dup
       self.class.new(@inspect_mode, lines)
@@ -63,17 +75,28 @@ module KATCP
       @lines << line
     end
 
+    # call-seq:
+    #   length -> Integer
+    #
     # Returns number of lines in +self+ including all inform lines and the
     # reply line, if present.
     def length
       @lines.length
     end
 
+    # call-seq:
+    #   response[index] -> Array or nil
+    #   response[start, length] -> Array_of_Arrays or nil
+    #   response[range] -> Array_of_Arrays or nil
+    #
     # Returns subset of lines.  Similar to Array#[].
     def [](*args)
       @lines[*args]
     end
 
+    # call-seq:
+    #   reqname -> String
+    #
     # Returns name of request corresponding to +self+ if complete, otherwise
     # nil.
     def reqname
@@ -81,6 +104,9 @@ module KATCP
       @lines[-1][0][1..-1] if complete?
     end
 
+    # call-seq:
+    #   complete? -> true_or_false
+    #
     # Returns true if at least one line exists and the most recently added line
     # is a reply line.
     def complete?
@@ -89,19 +115,26 @@ module KATCP
       @lines[-1] && @lines[-1][0][0,1] == '!'
     end
 
+    # call-seq:
+    #   status -> String
+    #
     # Returns status from reply line if complete, otherwise
     # <tt>'incomplete'</tt>.
-    #
-    #   TODO: Return nil if incomplete?
     def status
       complete? ? @lines[-1][1] : 'incomplete'
     end
 
+    # call-seq:
+    #   ok? -> true_or_false
+    #
     # Returns true if status is <tt>'ok'</tt>.
     def ok?
       'ok' == status
     end
 
+    # call-seq:
+    #   sort! -> self
+    #
     # Sorts the list of inform lines in-place and returns +self+
     def sort!
       n = complete? ? length-1 : length
@@ -109,11 +142,17 @@ module KATCP
       self
     end
 
+    # call-seq:
+    #   sort -> KATCP::Response
+    #
     # Returns a copy of +self+ with inform lines sorted
     def sort
       dup.sort!
     end
 
+    # call-seq:
+    #   to_s -> String
+    #
     # Rejoins words into lines and lines into one String
     def to_s
       @lines.map do |line|
@@ -121,6 +160,13 @@ module KATCP
       end.join("\n")
     end
 
+    # call-seq:
+    #   payload -> String or nil
+    #   payload(:to_i) -> Integer or nil
+    #   payload(:unpack, 'N*') -> Array_of_Integers or nil
+    #   payload(:to_na, NArray::INT) -> NArray_of_ints or nil
+    #   etc...
+    #
     # Returns contents of reply line ("words" joined by spaces) after status
     # word if <tt>ok?</tt> returns true.  Returns +nil+ if <tt>ok?</tt> is
     # false or no payload exists.  If +args+ are given, they are sent to the
@@ -137,8 +183,12 @@ module KATCP
       end
     end
 
+    # call-seq:
+    #   inspect -> String
+    #   inspect(mode) -> String
+    #
     # Provides a terse (or not so terse) summary of +self+ depending on value
-    # of +mode+.
+    # of +mode+.  If given, +mode+ will be treated as inspect_mode.
     def inspect(mode=@inspect_mode)
       if mode && mode != :inspect?
         send(mode) rescue inspect(nil)
