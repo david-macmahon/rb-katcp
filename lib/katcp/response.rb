@@ -39,11 +39,14 @@ module KATCP
       @lines.map {|words| words.map {|word| word.dup}}
     end
 
-    # Greps through lines for +pattern+.  If +join+ is neither +nil+ nor
-    # +false+ (the default is ' ', i.e. a space), then the "words" of each
-    # matching line are joined together using +join+ as a delimiter.
-    def grep(pattern, join=' ')
+    # Greps through lines for +pattern+.  If a block is given, each line will
+    # be passed to the block and replaced in the returned Array by the block's
+    # return value.  If +join+ is non-nil (default is a space character), then
+    # each element of the returned Array (i.e. each line) will have its
+    # elements (i.e. words) joined together using +join+ as a delimiter.
+    def grep(pattern, join=' ', &block)
       matches = @lines.find_all {|l| !l.grep(pattern).empty?}
+      matches.map!(&block) if block_given?
       matches.map! {|l| l.join(join)} if join
       matches
     end
