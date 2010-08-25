@@ -97,7 +97,7 @@ module KATCP
     #
     # Stop a tgtap instance.
     def tap_stop(register_name)
-      reqest(:tap_stop, register_name)
+      request(:tap_stop, register_name)
     end
 
     # call-seq:
