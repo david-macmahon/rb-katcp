@@ -122,10 +122,13 @@ module KATCP
     end
 
     # call-seq:
+    #   wordwrite(register_name, payload) -> KATCP::Response
     #   wordwrite(register_name, word_offset, payload[, ...]) -> KATCP::Response
     #
-    # Writes one or more words to a register (or block RAM).
-    def wordwrite(register_name, word_offset, *args)
+    # Writes one or more words to a register (or block RAM).  The first form
+    # uses a word offset of 0.
+    def wordwrite(register_name, *args)
+      word_offset = (args.length == 1) ? 0 : args.shift
       request(:wordwrite, register_name, word_offset, *args)
     end
 
