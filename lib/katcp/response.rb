@@ -162,26 +162,13 @@ module KATCP
     end
 
     # call-seq:
-    #   payload -> String or nil
-    #   payload(:to_i) -> Integer or nil
-    #   payload(:unpack, 'N*') -> Array_of_Integers or nil
-    #   payload(:to_na, NArray::INT) -> NArray_of_ints or nil
-    #   etc...
+    #   payload -> String
     #
     # Returns contents of reply line ("words" joined by spaces) after status
-    # word if <tt>ok?</tt> returns true.  Returns +nil+ if <tt>ok?</tt> is
-    # false or no payload exists.  If +args+ are given, they are sent to the
-    # payload String (via String#send) and the results are returned.
-    #
-    # For example, passing <tt>:to_i</tt> will result in conversion of payload
-    # String to Integer via String#to_i.  The String class can be
-    # monkey-patched as needed for additional conversion options.
-    def payload(*args)
-      if ok?
-        s = @lines[-1][2..-1].join(' ')
-        return s if args.empty?
-        s.send(*args)
-      end
+    # word if <tt>ok?</tt> returns true.  Returns an empty string if
+    # <tt>ok?</tt> is false or no payload exists.
+    def payload
+      ok? ? @lines[-1][2..-1].join(' ') : ''
     end
 
     # call-seq:
