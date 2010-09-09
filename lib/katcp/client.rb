@@ -45,7 +45,7 @@ module KATCP
         # "\n".
         while line = @socket.gets("\n") do
           # Split line into words and unescape each word
-          words = line.split.map! {|w| w.katcp_unescape!}
+          words = line.chomp.split(/[ \t]+/).map! {|w| w.katcp_unescape!}
           # Handle requests, replies, and informs based on first character of
           # first word.
           case words[0][0,1]
