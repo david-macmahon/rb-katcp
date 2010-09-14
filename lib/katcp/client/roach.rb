@@ -9,6 +9,20 @@ module KATCP
   class RoachClient < Client
 
     # call-seq:
+    #   bulkread(register_name) -> KATCP::Response
+    #   bulkread(register_name, register_offset) -> KATCP::Response
+    #   bulkread(register_name, register_offset, byte_count) -> KATCP::Response
+    #
+    # Reads a +byte_count+ bytes starting at +register_offset+ offset from
+    # register (or block RAM) named by +register_name+.  Returns a String
+    # containing the binary data.
+    def bulkread(register_name, *args)
+      resp = request(:bulkread, register_name, *args)
+      raise resp.to_s unless resp.ok?
+      resp.lines[0..-2].map{|l| l[1]}.join
+    end
+
+    # call-seq:
     #  delbof(image_file) -> KATCP::Response
     #
     # Deletes gateware image file named by +image_file+.
