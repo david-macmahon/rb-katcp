@@ -6,8 +6,6 @@ module KATCP
   # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
   # implementation that runs on ROACH boards.  Mostly just adds convenience
   # methods for tab completion in irb.
-  #
-  #   TODO: Add conveneince methods for converting binary payload data.
   class RoachClient < Client
 
     # call-seq:
