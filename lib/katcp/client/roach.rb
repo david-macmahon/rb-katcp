@@ -56,10 +56,12 @@ module KATCP
     #   read(register_name, register_offset, byte_count) -> KATCP::Response
     #
     # Reads a +byte_count+ bytes starting at +register_offset+ offset from
-    # register (or block RAM) named by +register_name+.  Binary data can be
-    # obtained from the Response via the Response#payload method.
+    # register (or block RAM) named by +register_name+.  Returns a String
+    # containing the binary data.
     def read(register_name, *args)
-      request(:read, register_name, *args)
+      resp = request(:read, register_name, *args)
+      raise resp.to_s unless resp.ok?
+      resp.payload
     end
 
     # call-seq:
