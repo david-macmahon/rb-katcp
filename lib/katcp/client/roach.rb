@@ -80,7 +80,7 @@ module KATCP
     # counts.
     def read(register_name, *args)
       if args.length <= 1
-        resp = wordread(register_name, *args)
+        resp = request(:wordread, register_name, *args)
         raise resp.to_s unless resp.ok?
         resp.payload.to_i(0)
       else
@@ -91,6 +91,9 @@ module KATCP
         resp.payload.to_na(NArray::INT).ntoh
       end
     end
+
+    alias wordread read
+    alias [] read
 
     # call-seq:
     #  status -> KATCP::Response
@@ -140,27 +143,6 @@ module KATCP
     end
 
     # call-seq:
-    #   wordread(register_name) -> KATCP::Response
-    #   wordread(register_name, word_offset) -> KATCP::Response
-    #   wordread(register_name, word_offset, length) -> KATCP::Response
-    #
-    # Reads word(s) from +register_name+.
-    def wordread(register_name, *args)
-      request(:wordread, register_name, *args)
-    end
-
-    # call-seq:
-    #   wordwrite(register_name, payload) -> KATCP::Response
-    #   wordwrite(register_name, word_offset, payload[, ...]) -> KATCP::Response
-    #
-    # Writes one or more words to a register (or block RAM).  The first form
-    # uses a word offset of 0.
-    def wordwrite(register_name, *args)
-      word_offset = (args.length == 1) ? 0 : args.shift
-      request(:wordwrite, register_name, word_offset, *args)
-    end
-
-    # call-seq:
     #   write(register_name, data) -> self
     #   write(register_name, word_offset, data) -> self
     #
@@ -191,6 +173,9 @@ module KATCP
       raise resp.to_s unless resp.ok?
       self
     end
+
+    alias wordwrite write
+    alias []= write
 
   end # class RoachClient
 end # module KATCP
