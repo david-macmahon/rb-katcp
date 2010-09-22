@@ -65,17 +65,31 @@ module KATCP
     end
 
     # call-seq:
-    #   read(register_name) -> KATCP::Response
-    #   read(register_name, register_offset) -> KATCP::Response
-    #   read(register_name, register_offset, byte_count) -> KATCP::Response
+    #   read(register_name) -> Integer
+    #   read(register_name, word_offset) -> Integer
+    #   read(register_name, word_offset, word_count) -> NArray.int(word_count)
     #
-    # Reads a +byte_count+ bytes starting at +register_offset+ offset from
-    # register (or block RAM) named by +register_name+.  Returns a String
-    # containing the binary data.
+    # Reads one or +word_count+ words starting at +word_offset+ offset from
+    # register (or block RAM) named by +register_name+.  Returns an Integer
+    # unless +word_count+ is given in which case it returns an
+    # NArray.int(word_count).
+    #
+    # Note that KATCP::Client#read deals with byte-based offsets and counts,
+    # but all reads on the ROACH must be word aligned and an integer number of
+    # words long, so KATCP::RoachClient#read deals with word-based offsets and
+    # counts.
     def read(register_name, *args)
-      resp = request(:read, register_name, *args)
-      raise resp.to_s unless resp.ok?
-      resp.payload
+      if args.length <= 1
+        resp = wordread(register_name, *args)
+        raise resp.to_s unless resp.ok?
+        resp.payload.to_i(0)
+      else
+        byte_offset = 4 * args[0]
+        byte_count = 4 * args[1]
+        resp = request(:read, register_name, byte_offset, byte_count)
+        raise resp.to_s unless resp.ok?
+        resp.payload.to_na(NArray::INT).ntoh
+      end
     end
 
     # call-seq:
@@ -147,11 +161,35 @@ module KATCP
     end
 
     # call-seq:
-    # write(register_name, register_offset, data_payload) -> KATCP::Response
+    #   write(register_name, data) -> self
+    #   write(register_name, word_offset, data) -> self
     #
-    # Write a given payload to an offset in a register.
-    def write(register_name, register_offset, data_payload)
-      request(:write, register_name, register_offset, data_payload)
+    # Write the given data (typically an NArray.int) to +word_offset+ (0 if not
+    # given) in register named +register_name+.  +data+ can be String
+    # containing raw bytes, NArray.int, Array of integer values, or other
+    # object that responds to to_i.
+    def write(register_name, *args)
+      word_offset = (args.length > 1) ? args.shift : 0
+      byte_offset = 4 * word_offset
+      args.flatten!
+      args.map! do |a|
+        case a
+        when String; a
+        when NArray; a.hton.to_s
+        when Array; a.pack('N*')
+        else [a.to_i].pack('N*')
+        end
+      end
+      data = args.join
+      byte_count = data.length
+      if byte_count % 4 != 0
+        raise "data length of #{byte_count} bytes is not a multiple of 4 bytes"
+      elsif byte_count == 0
+        warn "writing 0 bytes to #{register_name}"
+      end
+      resp = request(:write, register_name, register_offset, data)
+      raise resp.to_s unless resp.ok?
+      self
     end
 
   end # class RoachClient
