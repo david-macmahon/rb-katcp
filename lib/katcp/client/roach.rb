@@ -95,17 +95,29 @@ module KATCP
     alias has_key? has_device?
 
     # call-seq:
-    #   bulkread(register_name) -> KATCP::Response
-    #   bulkread(register_name, register_offset) -> KATCP::Response
-    #   bulkread(register_name, register_offset, byte_count) -> KATCP::Response
+    #   bulkread(register_name) -> Integer
+    #   bulkread(register_name, word_offset) -> Integer
+    #   bulkread(register_name, word_offset, word_count) -> NArray.int(word_count)
     #
-    # Reads a +byte_count+ bytes starting at +register_offset+ offset from
-    # register (or block RAM) named by +register_name+.  Returns a String
-    # containing the binary data.
+    # Reads a +word_count+ words starting at word_offset+ offset from
+    # register (or block RAM) named by +register_name+.  Returns an Integer
+    # unless +word_count+ is given in which case it returns an
+    # NArray.int(word_count).
+    #
+    # Equivalent to #read, but uses a :builkread request rather than a :read
+    # request.
     def bulkread(register_name, *args)
-      resp = request(:bulkread, register_name, *args)
+      byte_offset = 4 * (args[0] || 0)
+      byte_count  = 4 * (args[1] || 1)
+      raise 'word count must be non-negative' if byte_count < 0
+      resp = request(:bulkread, register_name, byte_offset, byte_count)
       raise resp.to_s unless resp.ok?
-      resp.lines[0..-2].map{|l| l[1]}.join
+      data = resp.lines[0..-2].map{|l| l[1]}.join
+      if args.length <= 1
+        data.unpack('N')[0]
+      else
+        data.to_na(NArray::INT).ntoh
+      end
     end
 
     # call-seq:
