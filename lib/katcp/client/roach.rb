@@ -4,27 +4,37 @@ require 'katcp/client'
 module KATCP
 
   # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
-  # implementation that runs on ROACH boards.  Adds methods for tcpborhserver2
-  # requests that are extentions to the KATCP base protocal.  Also adds methods
-  # #[] and #[]= to support Hash-liske access to gateware devices such as
-  # software registers, shared BRAM, etc.  Additionally, each instance
-  # dynamically adds (and removes) reader and writer attributes for gateware
-  # devices as the device is programmed (or de-programmed).  This not only
-  # provides for very clean and readable code, it also provides convenient tab
-  # completion in irb for gateware specific device names.
+  # implementation that runs on ROACH boards.  In addition to providing
+  # convenience wrappers around <tt>tcpborphserver2</tt> requests, it also adds
+  # the following features:
   #
-  # Note that KATCP::Client data transfer methods #read and #write deal with
-  # byte based offsets and counts whereas RoachClient these methods in
-  # RoachClient deal with word based offsets and counts since ROACH transfers
-  # (currently) require word alignment in both offsets and counts.  To use byte
-  # transfers explicitly, use <tt>request(:read, ...)</tt> instead of
-  # <tt>read(...)</tt> etc.
+  # * Hash-like access to read and write gateware devices (e.g. software
+  #   registers, shared BRAM, etc.) via methods #[] and #[]=.
+  #
+  # * Each RoachClient instance dynamically adds (and removes) reader and
+  #   writer attributes (i.e. methods) for gateware devices as the FPGA is
+  #   programmed (or de-programmed).  This not only provides for very clean and
+  #   readable code, it also provides convenient tab completion in irb for
+  #   gateware specific device names.
+  #
+  # * Word based instead of byte based data offsets and counts.  KATCP::Client
+  #   data transfer methods #read and #write deal with byte based offsets and
+  #   counts.  These methods in KATCP::RoachClient deal with word based offsets
+  #   and counts since ROACH transfers (currently) require word alignment in
+  #   both offsets and counts.  To use byte based offsets and counts
+  #   explicitly, use <tt>request(:read, ...)</tt> instead of
+  #   <tt>read(...)</tt> etc.
   class RoachClient < Client
 
     # Returns an Array of Strings representing the device names from the
-    # current design.
+    # current design.  The Array will be empty if the currently programmed
+    # gateware has no devices (very rare, if even possible) or if no gateware
+    # is currently programmed.
     attr_reader :devices
 
+    # Creates a RoachClient that connects to a KATCP server at +remote_host+ on
+    # +remote_port+.  If +local_host+ and +local_port+ are specified, then
+    # those parameters are used on the local end to establish the connection.
     def initialize(remote_host, remote_port=7147, local_host=nil, local_port=nil)
       super(remote_host, remote_port, local_host, local_port)
       # List of all devices
@@ -36,7 +46,7 @@ module KATCP
 
     # Dynamically define attributes (i.e. methods) for gateware devices, if
     # currently programmed.
-    def define_device_attrs
+    def define_device_attrs # :nodoc
       # First undefine existing device attrs
       undefine_device_attrs
       # Define nothing if FPGA not programmed
@@ -70,7 +80,7 @@ module KATCP
 
     # Undefine any attributes (i.e. methods) that were previously defined
     # dynamically.
-    def undefine_device_attrs
+    def undefine_device_attrs # :nodoc
       @device_attrs.each do |dev|
         instance_eval <<-"_end"
           class << self
@@ -99,12 +109,12 @@ module KATCP
     #   bulkread(register_name, word_offset) -> Integer
     #   bulkread(register_name, word_offset, word_count) -> NArray.int(word_count)
     #
-    # Reads a +word_count+ words starting at word_offset+ offset from
+    # Reads a +word_count+ words starting at +word_offset+ offset from
     # register (or block RAM) named by +register_name+.  Returns an Integer
     # unless +word_count+ is given in which case it returns an
     # NArray.int(word_count).
     #
-    # Equivalent to #read, but uses a :builkread request rather than a :read
+    # Equivalent to #read, but uses a bulkread request rather than a read
     # request.
     def bulkread(register_name, *args)
       byte_offset = 4 * (args[0] || 0)
@@ -157,12 +167,15 @@ module KATCP
     #   progdev(image_file) -> KATCP::Response
     #
     # Programs a gateware image specified by +image_file+.  If +image_file+ is
-    # omitted, de-programs the FPGA.  Whenever the FPGA is programmed, reader
-    # and write attributes (i.e. methods) are defined for every device listed
-    # by #listdev (unless this woudl cause a conflict with an already exosting
-    # method name.  Whenever the FPGA is de-programmed (or re-programmed),
-    # existing attributes that were dynamically defined for the previous design
-    # are removed.
+    # omitted, de-programs the FPGA.
+    #
+    # Whenever the FPGA is programmed, reader and writer attributes (i.e.
+    # methods) are defined for every device listed by #listdev except for
+    # device names that conflict with an already existing method names.
+    #
+    # Whenever the FPGA is de-programmed (or re-programmed), existing
+    # attributes that were dynamically defined for the previous design are
+    # removed.
     def progdev(*args)
       request(:progdev, *args)
       define_device_attrs
@@ -184,9 +197,9 @@ module KATCP
     # unless +word_count+ is given in which case it returns an
     # NArray.int(word_count).
     #
-    # Note that KATCP::Client#read deals with byte-based offsets and counts,
+    # Note that KATCP::Client#read deals with byte based offsets and counts,
     # but all reads on the ROACH must be word aligned and an integer number of
-    # words long, so KATCP::RoachClient#read deals with word-based offsets and
+    # words long, so KATCP::RoachClient#read deals with word based offsets and
     # counts.
     def read(register_name, *args)
       byte_offset = 4 * (args[0] || 0)
@@ -256,10 +269,10 @@ module KATCP
     #   write(register_name, data) -> self
     #   write(register_name, word_offset, data) -> self
     #
-    # Write the given data (typically an NArray.int) to +word_offset+ (0 if not
-    # given) in register named +register_name+.  +data+ can be String
-    # containing raw bytes, NArray.int, Array of integer values, or other
-    # object that responds to to_i.
+    # Write +data+ to +word_offset+ (0 if not given) in register named
+    # +register_name+.  The +data+ argument can be a String containing raw
+    # bytes (byte length must be multiple of 4), NArray.int, Array of integer
+    # values, or other object that responds to #to_i.
     def write(register_name, *args)
       word_offset = (args.length > 1) ? args.shift : 0
       byte_offset = 4 * word_offset
