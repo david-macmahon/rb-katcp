@@ -177,16 +177,16 @@ module KATCP
     # words long, so KATCP::RoachClient#read deals with word-based offsets and
     # counts.
     def read(register_name, *args)
+      byte_offset = 4 * (args[0] || 0)
+      byte_count  = 4 * (args[1] || 1)
+      raise 'word count must be non-negative' if byte_count < 0
+      resp = request(:read, register_name, byte_offset, byte_count)
+      raise resp.to_s unless resp.ok?
+      data = resp.payload
       if args.length <= 1
-        resp = request(:wordread, register_name, *args)
-        raise resp.to_s unless resp.ok?
-        resp.payload.to_i(0)
+        data.unpack('N')[0]
       else
-        byte_offset = 4 * args[0]
-        byte_count = 4 * args[1]
-        resp = request(:read, register_name, byte_offset, byte_count)
-        raise resp.to_s unless resp.ok?
-        resp.payload.to_na(NArray::INT).ntoh
+        data.to_na(NArray::INT).ntoh
       end
     end
 
