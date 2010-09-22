@@ -4,9 +4,95 @@ require 'katcp/client'
 module KATCP
 
   # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
-  # implementation that runs on ROACH boards.  Mostly just adds convenience
-  # methods for tab completion in irb.
+  # implementation that runs on ROACH boards.  Adds methods for tcpborhserver2
+  # requests that are extentions to the KATCP base protocal.  Also adds methods
+  # #[] and #[]= to support Hash-liske access to gateware devices such as
+  # software registers, shared BRAM, etc.  Additionally, each instance
+  # dynamically adds (and removes) reader and writer attributes for gateware
+  # devices as the device is programmed (or de-programmed).  This not only
+  # provides for very clean and readable code, it also provides convenient tab
+  # completion in irb for gateware specific device names.
+  #
+  # Note that KATCP::Client data transfer methods #read and #write deal with
+  # byte based offsets and counts whereas RoachClient these methods in
+  # RoachClient deal with word based offsets and counts since ROACH transfers
+  # (currently) require word alignment in both offsets and counts.  To use byte
+  # transfers explicitly, use <tt>request(:read, ...)</tt> instead of
+  # <tt>read(...)</tt> etc.
   class RoachClient < Client
+
+    # Returns an Array of Strings representing the device names from the
+    # current design.
+    attr_reader :devices
+
+    def initialize(remote_host, remote_port=7147, local_host=nil, local_port=nil)
+      super(remote_host, remote_port, local_host, local_port)
+      # List of all devices
+      @devices = [];
+      # List of dynamically defined device attrs (readers only, writers implied)
+      @device_attrs = [];
+      define_device_attrs
+    end
+
+    # Dynamically define attributes (i.e. methods) for gateware devices, if
+    # currently programmed.
+    def define_device_attrs
+      # First undefine existing device attrs
+      undefine_device_attrs
+      # Define nothing if FPGA not programmed
+      return unless programmed?
+      # Dynamically define accessors for all devices (i.e. registers, BRAMs,
+      # etc.) except those whose names conflict with existing methods.
+      @devices = listdev.lines[0..-2].map {|l| l[1]}
+      @devices.sort!
+      @devices.each do |dev|
+        # TODO sanitize dev in case it is invalid method name
+
+        # Define methods unless they conflict with existing methods
+        if ! respond_to?(dev) && ! respond_to?("#{dev}=")
+          # Save attr name
+          @device_attrs << dev
+          # Dynamically define methods
+          instance_eval <<-"_end"
+            def #{dev}(*args)
+              read('#{dev}', *args)
+            end
+            def #{dev}=(*args)
+              write('#{dev}', 0, *args)
+            end
+          _end
+        end
+      end
+      self
+    end
+
+    protected :define_device_attrs
+
+    # Undefine any attributes (i.e. methods) that were previously defined
+    # dynamically.
+    def undefine_device_attrs
+      @device_attrs.each do |dev|
+        instance_eval <<-"_end"
+          class << self
+            remove_method '#{dev}'
+            remove_method '#{dev}='
+          end
+        _end
+      end
+      @device_attrs.clear
+      @devices.clear
+      self
+    end
+
+    protected :undefine_device_attrs
+
+    # Returns +true+ if the current design has a device named +device+.
+    def has_device?(device)
+      @devices.include?(device.to_s)
+    end
+
+    # Provides Hash-like querying for a device named +device+.
+    alias has_key? has_device?
 
     # call-seq:
     #   bulkread(register_name) -> KATCP::Response
@@ -59,9 +145,21 @@ module KATCP
     #   progdev(image_file) -> KATCP::Response
     #
     # Programs a gateware image specified by +image_file+.  If +image_file+ is
-    # omitted, de-programs the FPGA.
+    # omitted, de-programs the FPGA.  Whenever the FPGA is programmed, reader
+    # and write attributes (i.e. methods) are defined for every device listed
+    # by #listdev (unless this woudl cause a conflict with an already exosting
+    # method name.  Whenever the FPGA is de-programmed (or re-programmed),
+    # existing attributes that were dynamically defined for the previous design
+    # are removed.
     def progdev(*args)
       request(:progdev, *args)
+      define_device_attrs
+    end
+
+    # Returns true if currently programmed (specifically, it is equivalent to
+    # <tt>status.ok?</tt>).
+    def programmed?
+      status.ok?
     end
 
     # call-seq:
