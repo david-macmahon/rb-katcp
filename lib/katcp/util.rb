@@ -48,26 +48,10 @@ class String
 
   # call-seq:
   #   to_na(typecode) -> NArray
-  #   to_na(typecode, byteswap) -> NArray
-  #   to_na(typecode,size[, ...]) -> NArray
-  #   to_na(typecode,size[, ...], byteswap) -> NArray
+  #   to_na(typecode, size[, ...]) -> NArray
   #
-  # Convert String to NArray accoring to +typecode+ and call byte swap method
-  # given by Symbol +byteswap+.  Pass +nil+ for +byteswap+ to skip the byte
-  # swap conversion.
-  #
-  # Because, as of this writing, KATCP servers typically run on big endian
-  # systems which return binary payload data in network byte order, the default
-  # +byteswap+ is <tt>:ntoh</tt>, which converts from network byte order to
-  # host (i.e. native) order.
+  # Convert String to NArray accoring to +typecode+.
   def to_na(typecode, *args)
-    # Default to :ntoh
-    byteswap = :ntoh
-    if !args.empty? && (Symbol === args[-1] || args[-1].nil?)
-      byteswap = args.pop
-    end
-    na = NArray.to_na(self, typecode, *args)
-    na = na.send(byteswap) if byteswap
-    na
+    NArray.to_na(self, typecode, *args)
   end
 end
