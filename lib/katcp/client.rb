@@ -131,16 +131,12 @@ module KATCP
       msgs
     end
 
-    # Translates calls to missing methods into KATCP requests.  If +sym+ ends
-    # with '=' then it is treated as an assignment attempt to a missing (or
-    # mistyped) register name and therefore passed to the normal method_missing
-    # method, which will raise an exception.
+    # Translates calls to missing methods into KATCP requests.
+    # Raises an exception if the response status is not OK.
     def method_missing(sym, *args)
-      if sym.to_s =~ /=$/
-        super(sym, *args)
-      else
-        request(sym, *args)
-      end
+      resp = request(sym, *args)
+      raise resp.to_s unless resp.ok?
+      resp
     end
 
     # Provides terse string representation of +self+.
