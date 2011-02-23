@@ -46,8 +46,8 @@ module KATCP
     # call-seq:
     #   grep(pattern, join=' ') -> Array or Strings
     #   grep(pattern, nil) -> Array of Arrays
-    #   grep(pattern, join=' ') {|line_array| ...}-> Array of Strings
-    #   grep(pattern, nil) {|line_array| ...}-> Array of ...
+    #   grep(pattern, join=' ') {|line_array| ...} -> Array of Strings
+    #   grep(pattern, nil) {|line_array| ...} -> Array of ...
     #
     # Greps through lines for +pattern+.  If a block is given, each line will
     # be passed to the block and replaced in the returned Array by the block's
