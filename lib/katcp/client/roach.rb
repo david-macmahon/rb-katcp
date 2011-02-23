@@ -292,7 +292,7 @@ module KATCP
       elsif byte_count == 0
         warn "writing 0 bytes to #{register_name}"
       end
-      resp = request(:write, register_name, register_offset, data)
+      resp = request(:write, register_name, byte_offset, data)
       raise resp.to_s unless resp.ok?
       self
     end
