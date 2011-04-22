@@ -83,6 +83,16 @@ module KATCP
       end # Thread.new block
     end
 
+    # Return remote hostname
+    def host
+      @remote_host
+    end
+
+    # Return remote port
+    def port
+      @remote_port
+    end
+
     # TODO: Have a log_handler?
 
     # call-seq:
