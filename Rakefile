@@ -2,7 +2,7 @@ require 'rubygems'
 require 'rake/gempackagetask'
 
 # Get KATCP::VERSION
-require 'lib/katcp/version.rb'
+require './lib/katcp/version.rb'
 
 spec = Gem::Specification.new do |s|
   # Basics

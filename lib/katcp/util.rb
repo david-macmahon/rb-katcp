@@ -8,13 +8,13 @@ class String
   def katcp_escape!
     empty? ? self[0..-1] = '\@' : self.gsub!(/[\\ \0\n\r\e\t]/) do |s|
       case s
-      when "\\": '\\\\'
-      when " " : '\_'
-      when "\0": '\0'
-      when "\n": '\n'
-      when "\r": '\r'
-      when "\e": '\e'
-      when "\t": '\t'
+      when "\\"; '\\\\'
+      when " " ; '\_'
+      when "\0"; '\0'
+      when "\n"; '\n'
+      when "\r"; '\r'
+      when "\e"; '\e'
+      when "\t"; '\t'
       end
     end
     self
@@ -29,13 +29,13 @@ class String
   def katcp_unescape!
     self == '\@' ? self[0..-1] = '' : self.gsub!(/\\[\\_0nret]/) do |s|
       case s
-      when '\\\\': "\\"
-      when '\_': " "
-      when '\0': "\0"
-      when '\n': "\n"
-      when '\r': "\r"
-      when '\e': "\e"
-      when '\t': "\t"
+      when '\\\\'; "\\"
+      when '\_'; " "
+      when '\0'; "\0"
+      when '\n'; "\n"
+      when '\r'; "\r"
+      when '\e'; "\e"
+      when '\t'; "\t"
       end
     end
     self
