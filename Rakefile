@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'rake/gempackagetask'
+require 'rubygems/package_task'
 
 # Get KATCP::VERSION
 require './lib/katcp/version.rb'
@@ -53,7 +53,7 @@ spec = Gem::Specification.new do |s|
   #s.test_files = [test/test.rb]
 end
 
-Rake::GemPackageTask.new(spec) do |pkg|
+Gem::PackageTask.new(spec) do |pkg|
   pkg.need_zip = true
   pkg.need_tar = true
 end
