@@ -3,6 +3,24 @@ require 'katcp/client'
 # Holds KATCP related classes etc.
 module KATCP
 
+  # Class used to access BRAMs
+  class Bram
+    def initialize(katcp_client, bram_name)
+      @katcp_client = katcp_client
+      @bram_name = bram_name
+    end
+
+    # Calls @katcp_client.bulkread(@bram_name, *args)
+    def [](*args)
+      @katcp_client.bulkread(@bram_name, *args)
+    end
+
+    # Calls @katcp_client.write(@bram_name, *args)
+    def []=(*args)
+      @katcp_client.write(@bram_name, *args)
+    end
+  end
+
   # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
   # implementation that runs on ROACH boards.  In addition to providing
   # convenience wrappers around <tt>tcpborphserver2</tt> requests, it also adds
@@ -41,14 +59,59 @@ module KATCP
       @devices = [];
       # List of dynamically defined device attrs (readers only, writers implied)
       @device_attrs = [];
-      define_device_attrs
+      # Hash of created Bram objects
+      @brams = {}
+
+      # Define device-specific attributes (if device is programmed)
+      define_device_attrs(nil)
     end
 
     # Dynamically define attributes (i.e. methods) for gateware devices, if
-    # currently programmed.
-    def define_device_attrs # :nodoc
+    # currently programmed.  If +typemap+ is nil or an empty Hash, all devices
+    # will be treated as read/write registers.  Otherwise, if +typemap+ must be
+    # a Hash.  If +typemap+ contains a key for a given device name, the
+    # corresponding value in +typemap+ specifies how to treat that device when
+    # dynamically generating accessor methods for it.  The type value can be
+    # one of:
+    #
+    #   :roreg (Read-only register)  Only a reader method will be created.
+    #   :rwreg (Read-write register) Both reader and writer methods will be
+    #                                created.
+    #   :bram (Shared BRAM)          A reader method returning a BRAM object
+    #                                will be created.
+    #   :skip (unwanted device)      No method will be created.
+    #
+    # The value can also be an Array whose first element is a Symbol from the
+    # list above.  The remaining elements specify aliases to be created for the
+    # given attribute methods.
+    #
+    # Subclasses should override this method (and the corresponding
+    # undefine_device_attrs) to pass an appropriate Hash to super().
+    #
+    # Example:
+    #
+    #   class MyRoachDesign < RoachClient
+    #     DEVICE_TYPES = {
+    #       :input_selector    => [:rwreg, :insel],
+    #       :switch_gbe_status => :roreg,
+    #       :adc_rms_levels    => :bram,
+    #       :unwanted          => :skip
+    #     }
+    #
+    #     def define_device_attrs(ignored)
+    #       super(DEVICE_TYPES)
+    #     end
+    #
+    #     def undefine_device_attrs(ignored)
+    #       super(DEVICE_TYPES)
+    #     end
+    #   end
+    #
+    # Note that this is a protected method!
+    def define_device_attrs(typemap={})
+      typemap ||= {}
       # First undefine existing device attrs
-      undefine_device_attrs
+      undefine_device_attrs(typemap)
       # Define nothing if FPGA not programmed
       return unless programmed?
       # Dynamically define accessors for all devices (i.e. registers, BRAMs,
@@ -60,17 +123,18 @@ module KATCP
 
         # Define methods unless they conflict with existing methods
         if ! respond_to?(dev) && ! respond_to?("#{dev}=")
+          # Dynamically define methods and aliases
+          type, *aliases = typemap[dev] || typemap[dev.to_sym]
+          next if type == :skip
           # Save attr name
           @device_attrs << dev
-          # Dynamically define methods
-          instance_eval <<-"_end"
-            def #{dev}(*args)
-              read('#{dev}', *args)
-            end
-            def #{dev}=(*args)
-              write('#{dev}', 0, *args)
-            end
-          _end
+          case type
+          when :bram;  bram(dev, *aliases)
+          when :roreg; roreg(dev, *aliases)
+          # else :rwreg or nil (or anything else for that matter) so treat it
+          # as R/W register.
+          else         rwreg(dev, *aliases)
+          end
         end
       end
       self
@@ -79,22 +143,101 @@ module KATCP
     protected :define_device_attrs
 
     # Undefine any attributes (i.e. methods) that were previously defined
-    # dynamically.
-    def undefine_device_attrs # :nodoc
+    # dynamically.  See #define_device_attrs.
+    def undefine_device_attrs(typemap={})
+      typemap ||= {}
       @device_attrs.each do |dev|
-        instance_eval <<-"_end"
-          class << self
-            remove_method '#{dev}'
-            remove_method '#{dev}='
-          end
-        _end
+        # Dynamically undefine methods and aliases
+        type, *aliases = typemap[dev] || typemap[dev.to_sym]
+        [dev, *aliases].each do |name|
+          instance_eval <<-"_end"
+            class << self
+              remove_method '#{name}'
+              remove_method '#{name}=' unless '#{type}' == 'bram' || '#{type}' == 'roreg'
+            end
+          _end
+        end
       end
       @device_attrs.clear
       @devices.clear
+      @brams.clear
       self
     end
 
     protected :undefine_device_attrs
+
+    # Allow subclasses to create read accessor method (with optional aliases)
+    # Create read accessor method (with optional aliases)
+    # for register.  Converts reg_name to method name by replacing '/' with
+    # '_'.  Typically used with read-only registers.
+    def roreg(reg_name, *aliases)
+      method_name = reg_name.to_s.gsub('/', '_')
+      instance_eval <<-"_end"
+        class << self
+          def #{method_name}(off=0,len=1); read('#{reg_name}',off,len); end
+        end
+      _end
+      aliases.each do |a|
+        instance_eval <<-"_end"
+          class << self
+            alias :'#{a}' :'#{method_name}'
+          end
+        _end
+      end
+      self
+    end
+
+    protected :roreg
+
+    # Allow subclasses to create read and write accessor methods (with optional
+    # Create read and write accessor methods (with optional
+    # aliases) for register.  Converts reg_name to method name by replacing '/'
+    # with '_'.
+    def rwreg(reg_name, *aliases)
+      roreg(reg_name, *aliases)
+      method_name = reg_name.to_s.gsub('/', '_')
+      instance_eval <<-"_end"
+        class << self
+          def #{method_name}=(v,off=0); write('#{reg_name}',off,v); end
+        end
+      _end
+      aliases.each do |a|
+        instance_eval <<-"_end"
+          class << self
+            alias #{a}= #{method_name}=
+          end
+        _end
+      end
+      self
+    end
+
+    protected :rwreg
+
+    # Allow subclasses to create accessor method (with optional aliases) for
+    # Create accessor method (with optional aliases) for
+    # Bram object backed by BRAM.
+    def bram(bram_name, *aliases)
+      bram_name = bram_name.to_s
+      method_name = bram_name.gsub('/', '_')
+      instance_eval <<-"_end"
+        class << self
+          def #{method_name}()
+            @brams['#{bram_name}'] ||= Bram.new(self, '#{bram_name}')
+            @brams['#{bram_name}']
+          end
+        end
+      _end
+      aliases.each do |a|
+        instance_eval <<-"_end"
+          class << self
+            alias #{a} #{method_name}
+          end
+        _end
+      end
+      self
+    end
+
+    protected :bram
 
     # Returns +true+ if the current design has a device named +device+.
     def has_device?(device)
@@ -123,7 +266,7 @@ module KATCP
       resp = request(:bulkread, register_name, byte_offset, byte_count)
       raise resp.to_s unless resp.ok?
       data = resp.lines[0..-2].map{|l| l[1]}.join
-      if args.length <= 1
+      if args.length <= 1 || args[1] == 1
         data.unpack('N')[0]
       else
         data.to_na(NArray::INT).ntoh
@@ -178,7 +321,7 @@ module KATCP
     # removed.
     def progdev(*args)
       request(:progdev, *args)
-      define_device_attrs
+      define_device_attrs(nil)
     end
 
     # Returns true if currently programmed (specifically, it is equivalent to
@@ -208,7 +351,7 @@ module KATCP
       resp = request(:read, register_name, byte_offset, byte_count)
       raise resp.to_s unless resp.ok?
       data = resp.payload
-      if args.length <= 1
+      if args.length <= 1 || args[1] == 1
         data.unpack('N')[0]
       else
         data.to_na(NArray::INT).ntoh
