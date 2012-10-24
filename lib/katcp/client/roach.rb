@@ -63,14 +63,15 @@ module KATCP
       @brams = {}
 
       # Define device-specific attributes (if device is programmed)
-      define_device_attrs(nil)
+      define_device_attrs
     end
 
     # Dynamically define attributes (i.e. methods) for gateware devices, if
-    # currently programmed.  If +typemap+ is nil or an empty Hash, all devices
-    # will be treated as read/write registers.  Otherwise, if +typemap+ must be
-    # a Hash.  If +typemap+ contains a key for a given device name, the
-    # corresponding value in +typemap+ specifies how to treat that device when
+    # currently programmed.  If #device_typemap returns nil or an empty Hash,
+    # all devices will be treated as read/write registers.  Otherwise, if
+    # #device_typemap must return a Hash-like object.  If the object returned
+    # by #device_typemap contains a key for a given device name, the
+    # corresponding value in specifies how to treat that device when
     # dynamically generating accessor methods for it.  The type value can be
     # one of:
     #
@@ -85,31 +86,32 @@ module KATCP
     # list above.  The remaining elements specify aliases to be created for the
     # given attribute methods.
     #
-    # Subclasses should override this method to pass an appropriate Hash to
-    # super().
+    # Subclasses should override the default #device_typemap method and return
+    # an appropriate Hash object if customization is desired.
     #
     # Example:
     #
     #   class MyRoachDesign < RoachClient
-    #     DEVICE_TYPES = {
+    #     DEVICE_TYPEMAP = {
     #       :input_selector    => [:rwreg, :insel],
     #       :switch_gbe_status => :roreg,
     #       :adc_rms_levels    => :bram,
     #       :unwanted          => :skip
     #     }
     #
-    #     def define_device_attrs(ignored)
-    #       super(DEVICE_TYPES)
+    #     def device_typemap
+    #       DEVICE_TYPEMAP
     #     end
     #   end
     #
     # Note that this is a protected method!
-    def define_device_attrs(typemap={})
-      typemap ||= {}
+    def define_device_attrs
       # First undefine existing device attrs
       undefine_device_attrs
       # Define nothing if FPGA not programmed
       return unless programmed?
+      # Get device typemap (possibly from subclass override!)
+      typemap = device_typemap || {}
       # Dynamically define accessors for all devices (i.e. registers, BRAMs,
       # etc.) except those whose names conflict with existing methods.
       @devices = listdev.lines[0..-2].map {|l| l[1]}
@@ -150,6 +152,10 @@ module KATCP
     end
 
     protected :undefine_device_attrs
+
+    # Returns an empty device typemap Hash.  Design specific subclasses can
+    # override this method to return a design specific device typemap.
+    def typemap; {}; end
 
     # Allow subclasses to create read accessor method (with optional aliases)
     # Create read accessor method (with optional aliases)
@@ -303,7 +309,7 @@ module KATCP
     # removed.
     def progdev(*args)
       request(:progdev, *args)
-      define_device_attrs(nil)
+      define_device_attrs
     end
 
     # Returns true if currently programmed (specifically, it is equivalent to
