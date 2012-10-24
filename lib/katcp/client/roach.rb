@@ -119,19 +119,16 @@ module KATCP
 
         # Define methods unless they conflict with existing methods
         if ! respond_to?(dev) && ! respond_to?("#{dev}=")
-          # Dynamically define methods and aliases
+          # Determine type (and aliases) of this device
           type, *aliases = typemap[dev] || typemap[dev.to_sym]
           next if type == :skip
-          # Save attr name
-          @device_attrs << dev
-          # Save alias names
-          @device_attrs.concat aliases
+          # Dynamically define methods and aliases
           case type
           when :bram;  bram(dev, *aliases)
           when :roreg; roreg(dev, *aliases)
           # else :rwreg or nil (or anything else for that matter) so treat it
           # as R/W register.
-          else         rwreg(dev, *aliases)
+          else rwreg(dev, *aliases)
           end
         end
       end
@@ -143,13 +140,8 @@ module KATCP
     # Undefine any attributes (i.e. methods) and aliases that were previously
     # defined dynamically.
     def undefine_device_attrs()
-      @device_attrs.each do |dev|
-        instance_eval <<-"_end"
-          class << self
-            remove_method '#{name}'
-            remove_method '#{name}=' if respond_to? '#{name}='
-          end
-        _end
+      @device_attrs.each do |name|
+        instance_eval "class << self; remove_method '#{name}'; end"
       end
       @device_attrs.clear
       @devices.clear
@@ -170,12 +162,11 @@ module KATCP
           def #{method_name}(off=0,len=1); read('#{reg_name}',off,len); end
         end
       _end
+      @device_attrs << method_name
       aliases.each do |a|
-        instance_eval <<-"_end"
-          class << self
-            alias :'#{a}' :'#{method_name}'
-          end
-        _end
+        a = a.to_s.gsub('/', '_')
+        instance_eval "class << self; alias #{a} #{method_name}; end"
+        @device_attrs << a
       end
       self
     end
@@ -194,12 +185,11 @@ module KATCP
           def #{method_name}=(v,off=0); write('#{reg_name}',off,v); end
         end
       _end
+      @device_attrs << "#{method_name}="
       aliases.each do |a|
-        instance_eval <<-"_end"
-          class << self
-            alias #{a}= #{method_name}=
-          end
-        _end
+        a = a.to_s.gsub('/', '_')
+        instance_eval "class << self; alias #{a}= #{method_name}=; end"
+        @device_attrs << "#{a}="
       end
       self
     end
@@ -220,12 +210,11 @@ module KATCP
           end
         end
       _end
+      @device_attrs << method_name
       aliases.each do |a|
-        instance_eval <<-"_end"
-          class << self
-            alias #{a} #{method_name}
-          end
-        _end
+        a = a.to_s.gsub('/', '_')
+        instance_eval "class << self; alias #{a} #{method_name}; end"
+        @device_attrs << "#{a}"
       end
       self
     end
