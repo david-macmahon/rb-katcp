@@ -85,8 +85,8 @@ module KATCP
     # list above.  The remaining elements specify aliases to be created for the
     # given attribute methods.
     #
-    # Subclasses should override this method (and the corresponding
-    # undefine_device_attrs) to pass an appropriate Hash to super().
+    # Subclasses should override this method to pass an appropriate Hash to
+    # super().
     #
     # Example:
     #
@@ -101,17 +101,13 @@ module KATCP
     #     def define_device_attrs(ignored)
     #       super(DEVICE_TYPES)
     #     end
-    #
-    #     def undefine_device_attrs(ignored)
-    #       super(DEVICE_TYPES)
-    #     end
     #   end
     #
     # Note that this is a protected method!
     def define_device_attrs(typemap={})
       typemap ||= {}
       # First undefine existing device attrs
-      undefine_device_attrs(typemap)
+      undefine_device_attrs
       # Define nothing if FPGA not programmed
       return unless programmed?
       # Dynamically define accessors for all devices (i.e. registers, BRAMs,
@@ -128,6 +124,8 @@ module KATCP
           next if type == :skip
           # Save attr name
           @device_attrs << dev
+          # Save alias names
+          @device_attrs.concat aliases
           case type
           when :bram;  bram(dev, *aliases)
           when :roreg; roreg(dev, *aliases)
@@ -142,21 +140,16 @@ module KATCP
 
     protected :define_device_attrs
 
-    # Undefine any attributes (i.e. methods) that were previously defined
-    # dynamically.  See #define_device_attrs.
-    def undefine_device_attrs(typemap={})
-      typemap ||= {}
+    # Undefine any attributes (i.e. methods) and aliases that were previously
+    # defined dynamically.
+    def undefine_device_attrs()
       @device_attrs.each do |dev|
-        # Dynamically undefine methods and aliases
-        type, *aliases = typemap[dev] || typemap[dev.to_sym]
-        [dev, *aliases].each do |name|
-          instance_eval <<-"_end"
-            class << self
-              remove_method '#{name}'
-              remove_method '#{name}=' unless '#{type}' == 'bram' || '#{type}' == 'roreg'
-            end
-          _end
-        end
+        instance_eval <<-"_end"
+          class << self
+            remove_method '#{name}'
+            remove_method '#{name}=' if respond_to? '#{name}='
+          end
+        _end
       end
       @device_attrs.clear
       @devices.clear
