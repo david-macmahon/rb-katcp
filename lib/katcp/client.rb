@@ -18,11 +18,11 @@ module KATCP
     def initialize(remote_host, remote_port=7147, local_host=nil, local_port=nil)
 
       # Save remote_host and remote_port for #inspect
-      @remote_host = remote_host
+      @remote_host = remote_host.to_s
       @remote_port = remote_port
 
       # @socket is the socket connecting to the KATCP server
-      @socket = TCPSocket.new(remote_host, remote_port, local_host, local_port)
+      @socket = TCPSocket.new(@remote_host, @remote_port, local_host, local_port)
 
       # Init attribute(s)
       @informs = []
