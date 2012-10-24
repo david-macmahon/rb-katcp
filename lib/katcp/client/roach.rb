@@ -33,7 +33,8 @@ module KATCP
   #   writer attributes (i.e. methods) for gateware devices as the FPGA is
   #   programmed (or de-programmed).  This not only provides for very clean and
   #   readable code, it also provides convenient tab completion in irb for
-  #   gateware specific device names.
+  #   gateware specific device names.  Subclasses can exert some control over
+  #   the dynamic method genreation.  See #device_typemap for details.
   #
   # * Word based instead of byte based data offsets and counts.  KATCP::Client
   #   data transfer methods #read and #write deal with byte based offsets and
@@ -67,45 +68,8 @@ module KATCP
     end
 
     # Dynamically define attributes (i.e. methods) for gateware devices, if
-    # currently programmed.  If #device_typemap returns nil or an empty Hash,
-    # all devices will be treated as read/write registers.  Otherwise, if
-    # #device_typemap must return a Hash-like object.  If the object returned
-    # by #device_typemap contains a key for a given device name, the
-    # corresponding value in specifies how to treat that device when
-    # dynamically generating accessor methods for it.  The type value can be
-    # one of:
-    #
-    #   :roreg (Read-only register)  Only a reader method will be created.
-    #   :rwreg (Read-write register) Both reader and writer methods will be
-    #                                created.
-    #   :bram (Shared BRAM)          A reader method returning a BRAM object
-    #                                will be created.
-    #   :skip (unwanted device)      No method will be created.
-    #
-    # The value can also be an Array whose first element is a Symbol from the
-    # list above.  The remaining elements specify aliases to be created for the
-    # given attribute methods.
-    #
-    # Subclasses should override the default #device_typemap method and return
-    # an appropriate Hash object if customization is desired.
-    #
-    # Example:
-    #
-    #   class MyRoachDesign < RoachClient
-    #     DEVICE_TYPEMAP = {
-    #       :input_selector    => [:rwreg, :insel],
-    #       :switch_gbe_status => :roreg,
-    #       :adc_rms_levels    => :bram,
-    #       :unwanted          => :skip
-    #     }
-    #
-    #     def device_typemap
-    #       DEVICE_TYPEMAP
-    #     end
-    #   end
-    #
-    # Note that this is a protected method!
-    def define_device_attrs
+    # currently programmed.  See #device_typemap for more details.
+    def define_device_attrs # :nodoc:
       # First undefine existing device attrs
       undefine_device_attrs
       # Define nothing if FPGA not programmed
@@ -141,7 +105,7 @@ module KATCP
 
     # Undefine any attributes (i.e. methods) and aliases that were previously
     # defined dynamically.
-    def undefine_device_attrs()
+    def undefine_device_attrs # :nodoc:
       @device_attrs.each do |name|
         instance_eval "class << self; remove_method '#{name}'; end"
       end
@@ -153,15 +117,71 @@ module KATCP
 
     protected :undefine_device_attrs
 
+    # This method's return value controls how methods and aliases are
+    # dynamically generated for devices within the ROACH gateware.  If
+    # #device_typemap returns +nil+ or an empty Hash, all devices will be
+    # treated as read/write registers.  Otherwise, #device_typemap must
+    # return a Hash-like object.  If the object returned by #device_typemap
+    # contains a key (String or Symbol) for a given device name, the key's
+    # corresponding value specifies how to treat that device when dynamically
+    # generating accessor methods for it and whether to generate any aliases
+    # for it.  If no key exists for a given device, the device will be treated
+    # as a read/write register.  The corresponding value can be one of:
+    #
+    #   :roreg (Read-only register)  Only a reader method will be created.
+    #   :rwreg (Read-write register) Both reader and writer methods will be
+    #                                created.
+    #   :bram (Shared BRAM)          A reader method returning a Bram object
+    #                                will be created.  The returned Bram object
+    #                                provides convenient ways to read and write
+    #                                to the Bram device.
+    #   :skip (unwanted device)      No method will be created.
+    #
+    # Methods are only created for devices that actually exist on the device.
+    # If no device exists for a given key, no methods will be created for that
+    # key.  In other words, regardless of the keys given, methods will not be
+    # created unless they are backed by an actual device.  Both reader and
+    # writer methods are created for devices for which no key is present.
+    #
+    # The value can also be an Array whose first element is a Symbol from the
+    # list above.  The remaining elements specify aliases to be created for the
+    # given attribute methods.
+    #
+    # RoachClient#device_typemap returns on empty Hash so all devices are
+    # treated as read/write registers by default.  Gateware specific subclasses
+    # of RoachClient can override #device_typemap method to return a object
+    # containing a Hash tailored to a specific gateware design.
+    #
+    # Example: The following would lead to the creation of the following
+    # methods and aliases: "input_selector", "input_selector=", "insel",
+    # "insel=", "switch_gbe_status", "adc_rms_levels" (assuming the named
+    # devices all exist!).  No methods would be created for the device named
+    # "unwanted_reg" even if it exists.
+    #
+    #   class MyRoachDesign < RoachClient
+    #     DEVICE_TYPEMAP = {
+    #       :input_selector    => [:rwreg, :insel],
+    #       :switch_gbe_status => :roreg,
+    #       :adc_rms_levels    => :bram,
+    #       :unwanted_reg      => :skip
+    #     }
+    #
+    #     def device_typemap
+    #       DEVICE_TYPEMAP
+    #     end
+    #   end
+    #
     # Returns an empty device typemap Hash.  Design specific subclasses can
     # override this method to return a design specific device typemap.
-    def device_typemap; {}; end
+    def device_typemap
+      {}
+    end
 
     # Allow subclasses to create read accessor method (with optional aliases)
     # Create read accessor method (with optional aliases)
     # for register.  Converts reg_name to method name by replacing '/' with
     # '_'.  Typically used with read-only registers.
-    def roreg(reg_name, *aliases)
+    def roreg(reg_name, *aliases) # :nodoc:
       method_name = reg_name.to_s.gsub('/', '_')
       instance_eval <<-"_end"
         class << self
@@ -183,7 +203,7 @@ module KATCP
     # Create read and write accessor methods (with optional
     # aliases) for register.  Converts reg_name to method name by replacing '/'
     # with '_'.
-    def rwreg(reg_name, *aliases)
+    def rwreg(reg_name, *aliases) # :nodoc:
       roreg(reg_name, *aliases)
       method_name = reg_name.to_s.gsub('/', '_')
       instance_eval <<-"_end"
@@ -205,7 +225,7 @@ module KATCP
     # Allow subclasses to create accessor method (with optional aliases) for
     # Create accessor method (with optional aliases) for
     # Bram object backed by BRAM.
-    def bram(bram_name, *aliases)
+    def bram(bram_name, *aliases) # :nodoc:
       bram_name = bram_name.to_s
       method_name = bram_name.gsub('/', '_')
       instance_eval <<-"_end"
