@@ -1,3 +1,5 @@
+require 'rubygems'
+require 'thread'
 require 'monitor'
 require 'socket'
 
