@@ -155,7 +155,7 @@ module KATCP
 
     # Returns an empty device typemap Hash.  Design specific subclasses can
     # override this method to return a design specific device typemap.
-    def typemap; {}; end
+    def device_typemap; {}; end
 
     # Allow subclasses to create read accessor method (with optional aliases)
     # Create read accessor method (with optional aliases)
