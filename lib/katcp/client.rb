@@ -152,8 +152,13 @@ module KATCP
     # override #close to perform additional cleanup as needed, but they must
     # either close the socket themselves or call super.
     def close
-      @socket.close if @socket && !@socket.closed?
+      @socket.close if connected?
       self
+    end
+
+    # Returns true if socket has been created and not closed
+    def connected?
+      !@socket.nil? && !@socket.closed?
     end
 
     # Return remote hostname
