@@ -49,8 +49,8 @@ module KATCP
 
     # Connect socket and start listener thread
     def connect
-      # Close any existing socket if not already closed
-      @socket.close if @socket && !@socket.closed?
+      # Close existing connection (if any)
+      close
 
       # Create new socket.  Times out in 3 seconds if not happy.
       @socket = TCPSocket.new(@remote_host, @remote_port, @local_host, @local_port)
@@ -146,6 +146,13 @@ module KATCP
       end # Thread.new block
 
     end #connect
+
+    # Close socket if it exists and is not already closed.  Subclasses can
+    # override #close to perform additional cleanup as needed, but they must
+    # either close the socket themselves or call super.
+    def close
+      @socket.close if @socket && !@socket.closed?
+    end
 
     # Return remote hostname
     def host
