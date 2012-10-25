@@ -55,16 +55,32 @@ module KATCP
     # +remote_port+.  If +local_host+ and +local_port+ are specified, then
     # those parameters are used on the local end to establish the connection.
     def initialize(remote_host, remote_port=7147, local_host=nil, local_port=nil)
-      super(remote_host, remote_port, local_host, local_port)
       # List of all devices
       @devices = [];
       # List of dynamically defined device attrs (readers only, writers implied)
       @device_attrs = [];
       # Hash of created Bram objects
       @brams = {}
+      # Call super *after* initializing subclass instance variables
+      super(remote_host, remote_port, local_host, local_port)
+    end
 
+    # Override KATCP::Client#connect to perform subclass specific
+    # post-connection setup.
+    def connect
+      super
       # Define device-specific attributes (if device is programmed)
       define_device_attrs
+      self
+    end
+
+    # Override KATCP::Client#close to perform subclass specific post-close
+    # cleanup.  Be sure to call super afterwards!
+    def close
+      # Undefine device-specific attributes (if device is programmed)
+      undefine_device_attrs
+    ensure
+      super
     end
 
     # Dynamically define attributes (i.e. methods) for gateware devices, if
