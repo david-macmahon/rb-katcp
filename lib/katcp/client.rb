@@ -17,12 +17,11 @@ module KATCP
     # those parameters are used on the local end to establish the connection.
     def initialize(remote_host, remote_port=7147, local_host=nil, local_port=nil)
 
-      # Save remote_host and remote_port for #inspect
+      # Save parameters
       @remote_host = remote_host.to_s
       @remote_port = remote_port
-
-      # @socket is the socket connecting to the KATCP server
-      @socket = TCPSocket.new(@remote_host, @remote_port, local_host, local_port)
+      @local_host = local_host
+      @local_port = local_port
 
       # Init attribute(s)
       @informs = []
@@ -42,6 +41,19 @@ module KATCP
 
       # Timeout value for socket operations
       @socket_timeout = 0.25
+
+      # Try to connect socket and start listener thread, but don't worry if it
+      # fails (each request attempt will try to reconnect if needed)
+      connect rescue nil
+    end
+
+    # Connect socket and start listener thread
+    def connect
+      # Close any existing socket if not already closed
+      @socket.close if @socket && !@socket.closed?
+
+      # Create new socket.  Times out in 3 seconds if not happy.
+      @socket = TCPSocket.new(@remote_host, @remote_port, @local_host, @local_port)
 
       # Start thread that reads data from server.
       Thread.new do
@@ -76,6 +88,14 @@ module KATCP
                 # line endings.  Currently only recognizes fixed strings, so for
                 # now go with "\n".
                 line = @socket.gets("\n")
+
+                # If EOF
+                if line.nil?
+                  # Send double-bang error response, and give up
+                  @rxq.enq(['!!socket-eof'])
+                  throw :giveup
+                end
+
                 # Split line into words and unescape each word
                 words = line.chomp.split(/[ \t]+/).map! {|w| w.katcp_unescape!}
                 # Handle requests, replies, and informs based on first character
@@ -125,7 +145,7 @@ module KATCP
         end # catch :giveup
       end # Thread.new block
 
-    end #initialize
+    end #connect
 
     # Return remote hostname
     def host
@@ -147,40 +167,63 @@ module KATCP
     #
     #   TODO: Raise exception if reply is not OK?
     def request(name, *arguments)
+      # (Re-)connect if @socket is in an invalid state
+      connect if @socket.nil? || @socket.closed?
+
       # Massage name to allow Symbols and to allow '_' between words (since
       # that is more natural for Symbols) in place of '-'
-      name = name.to_s.gsub('_','-')
+      reqname = name.to_s.gsub('_','-')
 
       # Escape arguments
-      arguments.map! {|arg| arg.to_s.katcp_escape}
+      reqargs = arguments.map! {|arg| arg.to_s.katcp_escape}
 
-      # Create response
-      resp = Response.new
+      # TODO Find a more elegant way to code this retry loop?
+      attempts = 0
+      while true
+        attempts += 1
 
-      # Get lock on @reqlock
-      @reqlock.synchronize do
-        # Store request name
-        @reqname = name
-        # Send request
-        req = "?#{[name, *arguments].join(' ')}\n"
-        @socket.print req
-        # Loop on reply queue until done or error
-        begin
-          words = @rxq.deq
-          resp << words
-        end until words[0][0,1] == '!'
-        # Clear request name
-        @reqname = nil
-        # If double-bang reply, close socket then raise exception
-        if words[0][0,2] == '!!'
-          @socket.close
+        # Create response
+        resp = Response.new
+
+        # Give "words" scope outside of synchronize block
+        words = nil
+
+        # Get lock on @reqlock
+        @reqlock.synchronize do
+          # Store request name
+          @reqname = reqname
+          # Send request
+          req = "?#{[reqname, *reqargs].join(' ')}\n"
+          @socket.print req
+          # Loop on reply queue until done or error
+          begin
+            words = @rxq.deq
+            resp << words
+          end until words[0][0,1] == '!'
+          # Clear request name
+          @reqname = nil
+        end # @reqlock.synchronize
+
+        # Break out of retry loop unless double-bang reply
+        break unless words[0][0,2] == '!!'
+
+        # Double-bang reply!!
+
+        # If we've already attempted more than once (i.e. twice)
+        if attempts > 1
+          # Raise exception
           case words[0]
           when '!!socket-timeout'; raise TimeoutError.new(resp)
           when '!!socket-error'; raise SocketError.new(resp)
+          when '!!socket-eof'; raise SocketEOF.new(resp)
           else raise RuntimeError.new(resp)
           end
         end
-      end
+
+        # Reconnect and try again
+        connect
+      end # while true
+
       resp
     end
 
