@@ -48,8 +48,10 @@ module KATCP
       # No socket yet
       @socket = nil
 
-      # Try to connect socket and start listener thread, but don't worry if it
-      # fails (each request attempt will try to reconnect if needed)
+      # Try to connect socket and start listener thread, but stifle exception
+      # if it fails because we need object creation to succeed even if connect
+      # doesn't.  Each request attempt will try to reconnect if needed.
+      # TODO Warn if connection fails?
       connect rescue self
     end
 
@@ -58,8 +60,35 @@ module KATCP
       # Close existing connection (if any)
       close
 
-      # Create new socket.  Times out in 3 seconds if not happy.
-      @socket = TCPSocket.new(@remote_host, @remote_port, @local_host, @local_port)
+      # Create new socket.
+      @socket = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
+      sockaddr = Socket.sockaddr_in(@remote_port, @remote_host)
+
+      # Do non-blocking connect
+      begin
+        @socket.connect_nonblock(sockaddr)
+      rescue Errno::EINPROGRESS
+        # Wait with timeout for @socket to become writable.
+        # Is DEFAULT_SOCKET_TIMEOUT seconds an OK timeout for connect?
+        rd_wr_err = select([], [@socket], [], DEFAULT_SOCKET_TIMEOUT)
+        if rd_wr_err.nil?
+          # Timeout during connect, close socket and raise TimeoutError
+          @socket.close
+          raise TimeoutError.new(
+            'connection timed out in %.3f seconds' % DEFAULT_SOCKET_TIMEOUT)
+        end
+
+        # Verify that we're connected
+        begin
+          @socket.connect_nonblock(sockaddr)
+        rescue Errno::EISCONN # expected
+          # ignore
+        rescue # anything else, unexpected
+          # Close socket and re-raise
+          @socket.close
+          raise
+        end
+      end # non-blocking connect
 
       # Start thread that reads data from server.
       Thread.new do
