@@ -44,7 +44,7 @@ module KATCP
 
       # Try to connect socket and start listener thread, but don't worry if it
       # fails (each request attempt will try to reconnect if needed)
-      connect rescue nil
+      connect rescue self
     end
 
     # Connect socket and start listener thread
@@ -145,6 +145,7 @@ module KATCP
         end # catch :giveup
       end # Thread.new block
 
+      self
     end #connect
 
     # Close socket if it exists and is not already closed.  Subclasses can
@@ -152,6 +153,7 @@ module KATCP
     # either close the socket themselves or call super.
     def close
       @socket.close if @socket && !@socket.closed?
+      self
     end
 
     # Return remote hostname
