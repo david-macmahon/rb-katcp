@@ -329,12 +329,16 @@ module KATCP
       request(:listdev, :size).sort!
     end
 
+    # This is the default timeout to use when programming a bitstream via
+    # #progdev.
+    PROGDEV_SOCKET_TIMEOUT = 5
+
     # call-seq:
     #   progdev -> KATCP::Response
     #   progdev(image_file) -> KATCP::Response
     #
     # Programs a gateware image specified by +image_file+.  If +image_file+ is
-    # omitted, de-programs the FPGA.
+    # omitted or nil, de-programs the FPGA.
     #
     # Whenever the FPGA is programmed, reader and writer attributes (i.e.
     # methods) are defined for every device listed by #listdev except for
@@ -344,7 +348,14 @@ module KATCP
     # attributes that were dynamically defined for the previous design are
     # removed.
     def progdev(*args)
-      request(:progdev, *args)
+      prev_socket_timeout = @socket_timeout
+      begin
+        # Adjust @socket_timeout if programming a bitstream
+        @socket_timeout = PROGDEV_SOCKET_TIMEOUT if args[0]
+        request(:progdev, *args)
+      ensure
+        @socket_timeout = prev_socket_timeout
+      end
       define_device_attrs
     end
 
