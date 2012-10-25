@@ -40,50 +40,92 @@ module KATCP
       # @rxq is an inter-thread queue
       @rxq = Queue.new
 
+      # Timeout value for socket operations
+      @socket_timeout = 0.25
+
       # Start thread that reads data from server.
       Thread.new do
-        # TODO: Monkey-patch gets so that it recognizes "\r" or "\n" as line
-        # endings.  Currently only recognizes fixed strings, so for now go with
-        # "\n".
-        while line = @socket.gets("\n") do
-          # Split line into words and unescape each word
-          words = line.chomp.split(/[ \t]+/).map! {|w| w.katcp_unescape!}
-          # Handle requests, replies, and informs based on first character of
-          # first word.
-          case words[0][0,1]
-          # Request
-          when '?'
-            # TODO Send 'unsupported' reply (or support requests from server?)
-          # Reply
-          when '!'
-            # TODO: Raise exception if name is not same as @reqname?
-            # TODO: Raise exception on non-ok?
-            # Enqueue words to @rxq
-            @rxq.enq(words)
-          # Inform
-          when '#'
-            # If the name is same as @reqname
-            if @reqname && @reqname == words[0][1..-1]
-              # Enqueue words to @rxq
-              @rxq.enq(words)
-            else
-              # Must be asynchronous inform message, add to list.
-              line.katcp_unescape!
-              line.chomp!
-              @informs << line
-            end
-          else
-            # Malformed line
-            # TODO: Log error better?
-            warn "malformed line: #{line.inspect}"
-          end
+        catch :giveup do
+          while true
+            begin
+              req_timeouts = 0
+              while req_timeouts < 2
+                # Use select to wait with timeout for data or error
+                rd_wr_err = select([@socket], [], [@socket], @socket_timeout)
 
-        end # @socket.each_line block
+                # Handle timeout
+                if rd_wr_err.nil?
+                  # Timeout, increment req_timeout if we're expecting a reply,
+                  # then try again
+                  req_timeouts += 1 if @reqname
+                  next
+                end
 
-        warn "Read on socket returned EOF"
-        #TODO Close socket?  Push EOF flag into @rxq?
+                # Handle error
+                if rd_wr_err[2][0]
+                  # Ignore unless we're expected a reply
+                  next unless @reqname
+                  # Otherwise, send double-bang error response, and give up
+                  @rxq.enq(['!!socket-error'])
+                  throw :giveup
+                end
+
+                # OK to read!
+
+                # TODO: Monkey-patch gets so that it recognizes "\r" or "\n" as
+                # line endings.  Currently only recognizes fixed strings, so for
+                # now go with "\n".
+                line = @socket.gets("\n")
+                # Split line into words and unescape each word
+                words = line.chomp.split(/[ \t]+/).map! {|w| w.katcp_unescape!}
+                # Handle requests, replies, and informs based on first character
+                # of first word.
+                case words[0][0,1]
+                # Request
+                when '?'
+                  # TODO Send 'unsupported' reply (or support requests from server?)
+                # Reply
+                when '!'
+                  # TODO: Raise exception if name is not same as @reqname?
+                  # TODO: Raise exception on non-ok?
+                  # Enqueue words to @rxq
+                  @rxq.enq(words)
+                # Inform
+                when '#'
+                  # If the name is same as @reqname
+                  if @reqname && @reqname == words[0][1..-1]
+                    # Enqueue words to @rxq
+                    @rxq.enq(words)
+                  else
+                    # Must be asynchronous inform message, add to list.
+                    line.katcp_unescape!
+                    line.chomp!
+                    @informs << line
+                  end
+                else
+                  # Malformed line
+                  # TODO: Log error better?
+                  warn "malformed line: #{line.inspect}"
+                end # case words[0][0,1]
+
+                # Reset req_timeouts counter
+                req_timeouts = 0
+
+              end # while req_timeouts < 2
+
+              # Got 2 timeouts in a request!
+              # Send double-bang timeout response
+              @rxq.enq(['!!socket-timeout'])
+              throw :giveup
+
+            rescue Exception => e
+              $stderr.puts e; $stderr.flush
+            end # begin
+          end # while true
+        end # catch :giveup
       end # Thread.new block
-    end
+
+    end #initialize
 
     # Return remote hostname
     def host
@@ -129,6 +171,15 @@ module KATCP
         end until words[0][0,1] == '!'
         # Clear request name
         @reqname = nil
+        # If double-bang reply, close socket then raise exception
+        if words[0][0,2] == '!!'
+          @socket.close
+          case words[0]
+          when '!!socket-timeout'; raise TimeoutError.new(resp)
+          when '!!socket-error'; raise SocketError.new(resp)
+          else raise RuntimeError.new(resp)
+          end
+        end
       end
       resp
     end
@@ -153,7 +204,7 @@ module KATCP
 
     # Provides terse string representation of +self+.
     def to_s
-      s = "#{@remote_host}:#{@remote_port}"
+      "#{@remote_host}:#{@remote_port}"
     end
 
     # Provides more detailed String representation of +self+
