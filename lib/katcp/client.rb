@@ -45,6 +45,9 @@ module KATCP
       # Timeout value for socket operations
       @socket_timeout = DEFAULT_SOCKET_TIMEOUT
 
+      # No socket yet
+      @socket = nil
+
       # Try to connect socket and start listener thread, but don't worry if it
       # fails (each request attempt will try to reconnect if needed)
       connect rescue self
