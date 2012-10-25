@@ -12,6 +12,9 @@ module KATCP
   # Facilitates talking to a KATCP server.
   class Client
 
+    # Default timeout for socket operations (in seconds)
+    DEFAULT_SOCKET_TIMEOUT = 0.25
+
     # Creates a KATCP client that connects to a KATCP server at +remote_host+
     # on +remote_port+.  If +local_host+ and +local_port+ are specified, then
     # those parameters are used on the local end to establish the connection.
@@ -40,7 +43,7 @@ module KATCP
       @rxq = Queue.new
 
       # Timeout value for socket operations
-      @socket_timeout = 0.25
+      @socket_timeout = DEFAULT_SOCKET_TIMEOUT
 
       # Try to connect socket and start listener thread, but don't worry if it
       # fails (each request attempt will try to reconnect if needed)
