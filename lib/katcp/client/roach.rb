@@ -65,6 +65,8 @@ module KATCP
     #   :remote_port  Specifies port used by KATCP server (default 7147)
     #   :local_host   Specifies local interface to bind to (default nil)
     #   :local_port   Specifies local port to bind to (default nil)
+    #   :typemap      Provides a default device typemap (default {}).
+    #                 See #device_typemap for details.
     def initialize(*args)
       # List of all devices
       @devices = [];
@@ -74,6 +76,8 @@ module KATCP
       @brams = {}
       # Call super *after* initializing subclass instance variables
       super(*args)
+      # If typemap given, use it
+      @device_typemap = @opts[:typemap] || {}
     end
 
     # Override KATCP::Client#connect to perform subclass specific
@@ -198,10 +202,11 @@ module KATCP
     #     end
     #   end
     #
-    # Returns an empty device typemap Hash.  Design specific subclasses can
-    # override this method to return a design specific device typemap.
+    # Returns the default device typemap Hash (either the one passed to the
+    # constructor or an empty Hash).  Design specific subclasses can override
+    # this method to return a design specific device typemap.
     def device_typemap
-      {}
+      @device_typemap
     end
 
     # Allow subclasses to create read accessor method (with optional aliases)
