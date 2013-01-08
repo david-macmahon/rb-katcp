@@ -51,10 +51,21 @@ module KATCP
     # is currently programmed.
     attr_reader :devices
 
+    # call-seq: RoachClient.new([remote_host, remote_port=7147, local_host=nil, local_port=nil,] opts={}) -> RoachClient
+    #
     # Creates a RoachClient that connects to a KATCP server at +remote_host+ on
     # +remote_port+.  If +local_host+ and +local_port+ are specified, then
     # those parameters are used on the local end to establish the connection.
-    def initialize(remote_host, remote_port=7147, local_host=nil, local_port=nil)
+    # Positional parameters can be used OR parameters can be passed via the
+    # +opts+ Hash.
+    #
+    # Supported keys for the +opts+ Hash are:
+    #
+    #   :remote_host  Specifies hostname of KATCP server
+    #   :remote_port  Specifies port used by KATCP server (default 7147)
+    #   :local_host   Specifies local interface to bind to (default nil)
+    #   :local_port   Specifies local port to bind to (default nil)
+    def initialize(*args)
       # List of all devices
       @devices = [];
       # List of dynamically defined device attrs (readers only, writers implied)
@@ -62,7 +73,7 @@ module KATCP
       # Hash of created Bram objects
       @brams = {}
       # Call super *after* initializing subclass instance variables
-      super(remote_host, remote_port, local_host, local_port)
+      super(*args)
     end
 
     # Override KATCP::Client#connect to perform subclass specific
