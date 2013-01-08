@@ -84,6 +84,12 @@ module KATCP
     # post-connection setup.
     def connect
       super
+      # Determine which commands are supported by the server
+      commands = request(:help).to_s
+      # Determine whether bulkread is used by server
+      @bulkread = commands.index('#help bulkread') ? :bulkread : :read
+      # Determine whether status or fpgastatus command is used by server
+      @fpgastatus = commands.index('#help fpgastatus') ? :fpgastatus : :status
       # Define device-specific attributes (if device is programmed)
       define_device_attrs
       self
@@ -297,9 +303,12 @@ module KATCP
     # unless +word_count+ is given in which case it returns an
     # NArray.int(word_count).
     #
-    # Equivalent to #read, but uses a bulkread request rather than a read
-    # request.
+    # Equivalent to #read (but uses a bulkread request rather than a read
+    # request if bulkread is supported).
     def bulkread(register_name, *args)
+      # Defer to #read unless server provides bulkread command
+      return read(register_name, *args) unless @bulkread == :bulkread
+
       byte_offset = 4 * (args[0] || 0)
       byte_count  = 4 * (args[1] || 1)
       raise 'word count must be non-negative' if byte_count < 0
@@ -376,7 +385,10 @@ module KATCP
     end
 
     # Returns true if currently programmed (specifically, it is equivalent to
-    # <tt>status.ok?</tt>).
+    # <tt>request(@fpgastatus).ok?</tt>).  Older versions of tcpborphserver
+    # used the "status" command, while newer versions use the "fpgastatus"
+    # command for the same purpose.  The @connect method checks which is used
+    # by the server and sets @fpgastatus accordingly.
     def programmed?
       status.ok?
     end
@@ -417,7 +429,7 @@ module KATCP
     #
     # Reports if gateware has been programmed.
     def status
-      request(:status)
+      request(@fpgastatus||:status)
     end
 
     # call-seq:
