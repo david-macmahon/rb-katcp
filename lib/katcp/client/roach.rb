@@ -76,8 +76,6 @@ module KATCP
       @brams = {}
       # Call super *after* initializing subclass instance variables
       super(*args)
-      # If typemap given, use it
-      @device_typemap = @opts[:typemap] || {}
     end
 
     # Override KATCP::Client#connect to perform subclass specific
@@ -212,7 +210,7 @@ module KATCP
     # constructor or an empty Hash).  Design specific subclasses can override
     # this method to return a design specific device typemap.
     def device_typemap
-      @device_typemap
+      (@opts && @opts[:typemap]) || {}
     end
 
     # Allow subclasses to create read accessor method (with optional aliases)
