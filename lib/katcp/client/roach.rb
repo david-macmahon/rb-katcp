@@ -33,7 +33,7 @@ module KATCP
     def write64(addr, val64)
       hi = ((val64 >> 32) & 0xffff)
       lo = val64 & 0xffffffff
-      set(addr, 2, hi, lo)
+      set(addr, hi, lo)
     end
 
     def mac
