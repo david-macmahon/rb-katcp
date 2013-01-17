@@ -14,24 +14,26 @@ module KATCP
     def [](*args)
       @katcp_client.bulkread(@bram_name, *args)
     end
+    alias :get :[]
 
     # Calls @katcp_client.write(@bram_name, *args)
     def []=(*args)
       @katcp_client.write(@bram_name, *args)
     end
+    alias :set :[]=
   end
 
   # Class used to access 10 GbE cores
   class TenGE < Bram
     def read64(addr)
-      hi, lo = self[addr,2].to_a
+      hi, lo = get(addr,2).to_a
       ((hi & 0xffff) << 32) | lo
     end
 
     def write64(addr, val64)
       hi = ((val64 >> 32) & 0xffff)
       lo = val64 & 0xffffffff
-      self[addr,2] = [hi, lo]
+      set(addr, 2, hi, lo)
     end
 
     def mac
@@ -42,21 +44,21 @@ module KATCP
       write64(0, m)
     end
 
-    def gw    ; self[3]    ; end
-    def gw=(a); self[3] = a; end
+    def gw    ; get(3)    ; end
+    def gw=(a); set(3, a); end
 
-    def ip    ; self[4]    ; end
-    def ip=(a); self[4] = a; end
+    def ip    ; get(4)    ; end
+    def ip=(a); set(4, a); end
 
-    def port   ; self[8] & 0xffff                               ; end
-    def port(p); self[8] = (self[8] & 0xffff0000) | (p & 0xffff); end
+    def port    ; get(8) & 0xffff                             ; end
+    def port=(p); set(8, (get(8) & 0xffff0000) | (p & 0xffff)); end
 
-    def xaui_status; self[9]; end
+    def xaui_status; get(9); end
 
-    def rx_eq_mix   ; (self[10] >> 24) & 0xff; end
-    def rx_eq_pol   ; (self[10] >> 16) & 0xff; end
-    def tx_preemph  ; (self[10] >>  8) & 0xff; end
-    def tx_diff_ctrl; (self[10]      ) & 0xff; end
+    def rx_eq_mix   ; (get(10) >> 24) & 0xff; end
+    def rx_eq_pol   ; (get(10) >> 16) & 0xff; end
+    def tx_preemph  ; (get(10) >>  8) & 0xff; end
+    def tx_diff_ctrl; (get(10)      ) & 0xff; end
 
     # Returns current value of ARP table entry +idx+.
     def [](idx)
