@@ -27,7 +27,7 @@ module KATCP
   class TenGE < Bram
     def read64(addr)
       hi, lo = get(addr,2).to_a
-      ((hi & 0xffff) << 32) | lo
+      ((hi & 0xffff) << 32) | (lo & 0xffffffff)
     end
 
     def write64(addr, val64)
