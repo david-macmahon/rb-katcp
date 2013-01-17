@@ -21,6 +21,54 @@ module KATCP
     end
   end
 
+  # Class used to access 10 GbE cores
+  class TenGE < Bram
+    def read64(addr)
+      hi, lo = self[addr,2].to_a
+      ((hi & 0xffff) << 32) | lo
+    end
+
+    def write64(addr, val64)
+      hi = ((val64 >> 32) & 0xffff)
+      lo = val64 & 0xffffffff
+      self[addr,2] = [hi, lo]
+    end
+
+    def mac
+      read64(0)
+    end
+
+    def mac=(m)
+      write64(0, m)
+    end
+
+    def gw    ; self[3]    ; end
+    def gw=(a); self[3] = a; end
+
+    def ip    ; self[4]    ; end
+    def ip=(a); self[4] = a; end
+
+    def port   ; self[8] & 0xffff                               ; end
+    def port(p); self[8] = (self[8] & 0xffff0000) | (p & 0xffff); end
+
+    def xaui_status; self[9]; end
+
+    def rx_eq_mix   ; (self[10] >> 24) & 0xff; end
+    def rx_eq_pol   ; (self[10] >> 16) & 0xff; end
+    def tx_preemph  ; (self[10] >>  8) & 0xff; end
+    def tx_diff_ctrl; (self[10]      ) & 0xff; end
+
+    # Returns current value of ARP table entry +idx+.
+    def [](idx)
+      read64(0xc00+2*idx)
+    end
+
+    # Sets value of ARP table entry +idx+ to +mac+.
+    def []=(idx, mac)
+      write64(0xc00+2*idx, mac)
+    end
+  end
+
   # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
   # implementation that runs on ROACH boards.  In addition to providing
   # convenience wrappers around <tt>tcpborphserver2</tt> requests, it also adds
@@ -126,6 +174,7 @@ module KATCP
           # Dynamically define methods and aliases
           case type
           when :bram;  bram(dev, *aliases)
+          when :tenge; tenge(dev, *aliases)
           when :roreg; roreg(dev, *aliases)
           # else :rwreg or nil (or anything else for that matter) so treat it
           # as R/W register.
@@ -170,6 +219,10 @@ module KATCP
     #                                will be created.  The returned Bram object
     #                                provides convenient ways to read and write
     #                                to the Bram device.
+    #   :tenge (10 GbE)              A reader method returning a TenGE object
+    #                                will be created.  The returned TenGE object
+    #                                provides convenient ways to read and write
+    #                                to the TenGE device.
     #   :skip (unwanted device)      No method will be created.
     #
     # Methods are only created for devices that actually exist on the device.
@@ -189,14 +242,15 @@ module KATCP
     #
     # Example: The following would lead to the creation of the following
     # methods and aliases: "input_selector", "input_selector=", "insel",
-    # "insel=", "switch_gbe_status", "adc_rms_levels" (assuming the named
-    # devices all exist!).  No methods would be created for the device named
-    # "unwanted_reg" even if it exists.
+    # "insel=", "switch_gbe_status", "switch_gbe", "adc_rms_levels" (assuming
+    # the named devices all exist!).  No methods would be created for the
+    # device named "unwanted_reg" even if it exists.
     #
     #   class MyRoachDesign < RoachClient
     #     DEVICE_TYPEMAP = {
     #       :input_selector    => [:rwreg, :insel],
     #       :switch_gbe_status => :roreg,
+    #       :switch_gbe        => :tenge,
     #       :adc_rms_levels    => :bram,
     #       :unwanted_reg      => :skip
     #     }
@@ -258,7 +312,6 @@ module KATCP
 
     protected :rwreg
 
-    # Allow subclasses to create accessor method (with optional aliases) for
     # Create accessor method (with optional aliases) for
     # Bram object backed by BRAM.
     def bram(bram_name, *aliases) # :nodoc:
@@ -282,6 +335,30 @@ module KATCP
     end
 
     protected :bram
+
+    # Create accessor method (with optional aliases) for
+    # TenGE object backed by 10 GbE core.
+    def tenge(tenge_name, *aliases) # :nodoc:
+      tenge_name = tenge_name.to_s
+      method_name = tenge_name.gsub('/', '_')
+      instance_eval <<-"_end"
+        class << self
+          def #{method_name}()
+            @brams['#{tenge_name}'] ||= TenGE.new(self, '#{tenge_name}')
+            @brams['#{tenge_name}']
+          end
+        end
+      _end
+      @device_attrs << method_name
+      aliases.each do |a|
+        a = a.to_s.gsub('/', '_')
+        instance_eval "class << self; alias #{a} #{method_name}; end"
+        @device_attrs << "#{a}"
+      end
+      self
+    end
+
+    protected :tenge
 
     # Returns +true+ if the current design has a device named +device+.
     def has_device?(device)
