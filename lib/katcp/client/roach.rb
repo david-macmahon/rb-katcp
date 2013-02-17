@@ -120,8 +120,9 @@ module KATCP
       @devices = [];
       # List of dynamically defined device attrs (readers only, writers implied)
       @device_attrs = [];
-      # Hash of created Bram objects
-      @brams = {}
+      # @device objects is a Hash of created device objects: key is Class,
+      # value is a Hash mapping device name to instance of Class.
+      @device_objects = {}
       # Call super *after* initializing subclass instance variables
       super(*args)
     end
@@ -173,8 +174,9 @@ module KATCP
           next if type == :skip
           # Dynamically define methods and aliases
           case type
-          when :bram;  bram(dev, *aliases)
-          when :tenge; tenge(dev, *aliases)
+          when Class;  device_object(type,  dev, *aliases)
+          when :bram;  device_object(Bram,  dev, *aliases)
+          when :tenge; device_object(TenGE, dev, *aliases)
           when :roreg; roreg(dev, *aliases)
           # else :rwreg or nil (or anything else for that matter) so treat it
           # as R/W register.
@@ -195,7 +197,8 @@ module KATCP
       end
       @device_attrs.clear
       @devices.clear
-      @brams.clear
+      # TODO Support cleanup call for device objects?
+      @device_objects.clear
       self
     end
 
@@ -312,16 +315,19 @@ module KATCP
 
     protected :rwreg
 
-    # Create accessor method (with optional aliases) for
-    # Bram object backed by BRAM.
-    def bram(bram_name, *aliases) # :nodoc:
-      bram_name = bram_name.to_s
-      method_name = bram_name.gsub('/', '_')
+    # Create accessor method (with optional aliases) for a device object backed
+    # by instance of Class referred to by clazz.  clazz.to_s must return the
+    # name of a Class whose initialize method accepts two parameters: a
+    # KATCP::Client instance and the name of the device.
+    def device_object(clazz, name, *aliases) # :nodoc:
+      name = name.to_s
+      method_name = name.gsub('/', '_')
       instance_eval <<-"_end"
         class << self
           def #{method_name}()
-            @brams['#{bram_name}'] ||= Bram.new(self, '#{bram_name}')
-            @brams['#{bram_name}']
+            @device_objects[#{clazz}] ||= {}
+            @device_objects[#{clazz}]['#{name}'] ||= #{clazz}.new(self, '#{name}')
+            @device_objects[#{clazz}]['#{name}']
           end
         end
       _end
@@ -334,31 +340,7 @@ module KATCP
       self
     end
 
-    protected :bram
-
-    # Create accessor method (with optional aliases) for
-    # TenGE object backed by 10 GbE core.
-    def tenge(tenge_name, *aliases) # :nodoc:
-      tenge_name = tenge_name.to_s
-      method_name = tenge_name.gsub('/', '_')
-      instance_eval <<-"_end"
-        class << self
-          def #{method_name}()
-            @brams['#{tenge_name}'] ||= TenGE.new(self, '#{tenge_name}')
-            @brams['#{tenge_name}']
-          end
-        end
-      _end
-      @device_attrs << method_name
-      aliases.each do |a|
-        a = a.to_s.gsub('/', '_')
-        instance_eval "class << self; alias #{a} #{method_name}; end"
-        @device_attrs << "#{a}"
-      end
-      self
-    end
-
-    protected :tenge
+    protected :device_object
 
     # Returns +true+ if the current design has a device named +device+.
     def has_device?(device)
