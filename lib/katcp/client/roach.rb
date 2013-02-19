@@ -14,49 +14,79 @@ module KATCP
     def [](*args)
       @katcp_client.bulkread(@bram_name, *args)
     end
+    alias :get :[]
 
     # Calls @katcp_client.write(@bram_name, *args)
     def []=(*args)
       @katcp_client.write(@bram_name, *args)
     end
+    alias :set :[]=
   end
 
   # Class used to access 10 GbE cores
   class TenGE < Bram
+    # Read a 64 bit value big endian value starting at 32-bit word offset
+    # +addr+.
     def read64(addr)
-      hi, lo = self[addr,2].to_a
-      ((hi & 0xffff) << 32) | lo
+      hi, lo = get(addr,2).to_a
+      ((hi & 0xffff) << 32) | (lo & 0xffffffff)
     end
 
+    # Write +val64+ as a 64 bit value big endian value starting at 32-bit word
+    # offset +addr+.
     def write64(addr, val64)
       hi = ((val64 >> 32) & 0xffff)
       lo = val64 & 0xffffffff
-      self[addr,2] = [hi, lo]
+      set(addr, hi, lo)
     end
 
+    # Return MAC address of 10 GbE core as 48-bit value.
     def mac
       read64(0)
     end
 
+    # Set MAC address of 10 GbE core to 48-bit value +m+.
     def mac=(m)
       write64(0, m)
     end
 
-    def gw    ; self[3]    ; end
-    def gw=(a); self[3] = a; end
+    # Get gateway IP address as 32-bit integer.
+    def gw    ; get(3)    ; end
+    # Set gateway IP address to 32-bit integer +a+.
+    def gw=(a); set(3, a); end
 
-    def ip    ; self[4]    ; end
-    def ip=(a); self[4] = a; end
+    # Get source IP address as 32-bit integer.
+    def ip    ; get(4)    ; end
+    # Set source IP address to 32-bit integer +a+.
+    def ip=(a); set(4, a); end
 
-    def port   ; self[8] & 0xffff                               ; end
-    def port(p); self[8] = (self[8] & 0xffff0000) | (p & 0xffff); end
+    # Get local rx port as 16-bit integer.
+    def port    ; get(8) & 0xffff                             ; end
+    # Set local rx port to 16-bit integer +p+.
+    def port=(p); set(8, (get(8) & 0xffff0000) | (p & 0xffff)); end
 
-    def xaui_status; self[9]; end
+    # Returns xaui status word.  Bits 2 through 5 are lane sync, bit 6 is
+    # channel bonding status.
+    def xaui_status; get(9); end
+    # Four least significant bits represent sync status for each lane.
+    #   1 bit = lane sync OK
+    #   0 bit = lane sync BAD
+    # Proper operation requires all four lanes to have good sync status, so 15
+    # (0b1111) is the desired value.
+    def xaui_sync; (get(9) >> 2) & 0b1111; end
+    # Returns true if #xaui_sync returns 15
+    def xaui_sync_ok?; xaui_sync == 0b1111; end
+    # Returns true if all four XAUI lanes are bonded
+    def xaui_bonded?; (get(9) >> 6) & 1; end
 
-    def rx_eq_mix   ; (self[10] >> 24) & 0xff; end
-    def rx_eq_pol   ; (self[10] >> 16) & 0xff; end
-    def tx_preemph  ; (self[10] >>  8) & 0xff; end
-    def tx_diff_ctrl; (self[10]      ) & 0xff; end
+    # Get current value of rx_eq_mix parameter.
+    def rx_eq_mix   ; (get(10) >> 24) & 0xff; end
+    # Get current value of rx_eq_pol parameter.
+    def rx_eq_pol   ; (get(10) >> 16) & 0xff; end
+    # Get current value of tx_preemph parameter.
+    def tx_preemph  ; (get(10) >>  8) & 0xff; end
+    # Get current value of tx_diff_ctrl parameter.
+    def tx_diff_ctrl; (get(10)      ) & 0xff; end
 
     # Returns current value of ARP table entry +idx+.
     def [](idx)
