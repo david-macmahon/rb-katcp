@@ -25,32 +25,44 @@ module KATCP
 
   # Class used to access 10 GbE cores
   class TenGE < Bram
+    # Read a 64 bit value big endian value starting at 32-bit word offset
+    # +addr+.
     def read64(addr)
       hi, lo = get(addr,2).to_a
       ((hi & 0xffff) << 32) | (lo & 0xffffffff)
     end
 
+    # Write +val64+ as a 64 bit value big endian value starting at 32-bit word
+    # offset +addr+.
     def write64(addr, val64)
       hi = ((val64 >> 32) & 0xffff)
       lo = val64 & 0xffffffff
       set(addr, hi, lo)
     end
 
+    # Return MAC address of 10 GbE core as 48-bit value.
     def mac
       read64(0)
     end
 
+    # Set MAC address of 10 GbE core to 48-bit value +m+.
     def mac=(m)
       write64(0, m)
     end
 
+    # Get gateway IP address as 32-bit integer.
     def gw    ; get(3)    ; end
+    # Set gateway IP address to 32-bit integer +a+.
     def gw=(a); set(3, a); end
 
+    # Get source IP address as 32-bit integer.
     def ip    ; get(4)    ; end
+    # Set source IP address to 32-bit integer +a+.
     def ip=(a); set(4, a); end
 
+    # Get local rx port as 16-bit integer.
     def port    ; get(8) & 0xffff                             ; end
+    # Set local rx port to 16-bit integer +p+.
     def port=(p); set(8, (get(8) & 0xffff0000) | (p & 0xffff)); end
 
     # Returns xaui status word.  Bits 2 through 5 are lane sync, bit 6 is
@@ -67,9 +79,13 @@ module KATCP
     # Returns true if all four XAUI lanes are bonded
     def xaui_bonded?; (get(9) >> 6) & 1; end
 
+    # Get current value of rx_eq_mix parameter.
     def rx_eq_mix   ; (get(10) >> 24) & 0xff; end
+    # Get current value of rx_eq_pol parameter.
     def rx_eq_pol   ; (get(10) >> 16) & 0xff; end
+    # Get current value of tx_preemph parameter.
     def tx_preemph  ; (get(10) >>  8) & 0xff; end
+    # Get current value of tx_diff_ctrl parameter.
     def tx_diff_ctrl; (get(10)      ) & 0xff; end
 
     # Returns current value of ARP table entry +idx+.
