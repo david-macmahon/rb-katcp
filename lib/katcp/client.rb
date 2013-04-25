@@ -2,6 +2,7 @@ require 'rubygems'
 require 'thread'
 require 'monitor'
 require 'socket'
+require 'timeout'
 
 require 'katcp/response'
 require 'katcp/util'
@@ -25,10 +26,12 @@ module KATCP
     #
     # Supported keys for the +opts+ Hash are:
     #
-    #   :remote_host  Specifies hostname of KATCP server
-    #   :remote_port  Specifies port used by KATCP server (default 7147)
-    #   :local_host   Specifies local interface to bind to (default nil)
-    #   :local_port   Specifies local port to bind to (default nil)
+    #   :remote_host    Specifies hostname of KATCP server
+    #   :remote_port    Specifies port used by KATCP server (default 7147)
+    #   :local_host     Specifies local interface to bind to (default nil)
+    #   :local_port     Specifies local port to bind to (default nil)
+    #   :socket_timeout Specifies timeout for socket operations
+    #                   (default DEFAULT_SOCKET_TIMEOUT)
     def initialize(*args)
       # If final arg is a Hash, pop it off
       @opts = (Hash === args[-1]) ? args.pop : {}
@@ -39,6 +42,10 @@ module KATCP
       @remote_port = remote_port || @opts[:remote_port] || 7147
       @local_host = local_host || @opts[:local_host]
       @local_port = local_port || @opts[:local_port]
+
+      # Create sockaddr from remote host and port.  This can raise
+      # "SocketError: getaddrinfo: Name or service not known".
+      @sockaddr = Socket.sockaddr_in(@remote_port, @remote_host)
 
       # Init attribute(s)
       @informs = []
@@ -57,7 +64,7 @@ module KATCP
       @rxq = Queue.new
 
       # Timeout value for socket operations
-      @socket_timeout = DEFAULT_SOCKET_TIMEOUT
+      @socket_timeout = @opts[:socket_timeout] || DEFAULT_SOCKET_TIMEOUT
 
       # No socket yet
       @socket = nil
@@ -76,33 +83,22 @@ module KATCP
 
       # Create new socket.
       @socket = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
-      sockaddr = Socket.sockaddr_in(@remote_port, @remote_host)
 
-      # Do non-blocking connect
+      # Do connect in timeout block
       begin
-        @socket.connect_nonblock(sockaddr)
-      rescue Errno::EINPROGRESS
-        # Wait with timeout for @socket to become writable.
-        # Is DEFAULT_SOCKET_TIMEOUT seconds an OK timeout for connect?
-        rd_wr_err = select([], [@socket], [], DEFAULT_SOCKET_TIMEOUT)
-        if rd_wr_err.nil?
-          # Timeout during connect, close socket and raise TimeoutError
-          @socket.close
-          raise TimeoutError.new(
-            'connection timed out in %.3f seconds' % DEFAULT_SOCKET_TIMEOUT)
+        Timeout::timeout(@socket_timeout) do
+          @socket.connect(@sockaddr)
         end
-
-        # Verify that we're connected
-        begin
-          @socket.connect_nonblock(sockaddr)
-        rescue Errno::EISCONN # expected
-          # ignore
-        rescue # anything else, unexpected
-          # Close socket and re-raise
-          @socket.close
-          raise
+      rescue => e
+        # Close socket
+        @socket.close
+        # Change e to TimeoutError instead of Timeout::Error
+        if Timeout::Error === e
+          e = TimeoutError.new(
+            'connection timed out in %.3f seconds' % @socket_timeout)
         end
-      end # non-blocking connect
+        raise e
+      end
 
       # Start thread that reads data from server.
       Thread.new do

@@ -139,12 +139,14 @@ module KATCP
     #
     # Supported keys for the +opts+ Hash are:
     #
-    #   :remote_host  Specifies hostname of KATCP server
-    #   :remote_port  Specifies port used by KATCP server (default 7147)
-    #   :local_host   Specifies local interface to bind to (default nil)
-    #   :local_port   Specifies local port to bind to (default nil)
-    #   :typemap      Provides a default device typemap (default {}).
-    #                 See #device_typemap for details.
+    #   :remote_host    Specifies hostname of KATCP server
+    #   :remote_port    Specifies port used by KATCP server (default 7147)
+    #   :local_host     Specifies local interface to bind to (default nil)
+    #   :local_port     Specifies local port to bind to (default nil)
+    #   :socket_timeout Specifies timeout for socket operations
+    #                   (default DEFAULT_SOCKET_TIMEOUT)
+    #   :typemap        Provides a default device typemap (default {}).
+    #                   See #device_typemap for details.
     def initialize(*args)
       # List of all devices
       @devices = [];
