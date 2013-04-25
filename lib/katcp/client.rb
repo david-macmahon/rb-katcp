@@ -27,7 +27,8 @@ module KATCP
     # Supported keys for the +opts+ Hash are:
     #
     #   :remote_host    Specifies hostname of KATCP server
-    #   :remote_port    Specifies port used by KATCP server (default 7147)
+    #   :remote_port    Specifies port used by KATCP server
+    #                   (default ENV['KATCP_PORT'] || 7147)
     #   :local_host     Specifies local interface to bind to (default nil)
     #   :local_port     Specifies local port to bind to (default nil)
     #   :socket_timeout Specifies timeout for socket operations
@@ -39,9 +40,12 @@ module KATCP
       # Save parameters
       remote_host, remote_port, local_host, local_port = args
       @remote_host = remote_host ? remote_host.to_s : @opts[:remote_host].to_s
-      @remote_port = remote_port || @opts[:remote_port] || 7147
+      @remote_port = remote_port || @opts[:remote_port] || ENV['KATCP_PORT'] || 7147
       @local_host = local_host || @opts[:local_host]
       @local_port = local_port || @opts[:local_port]
+
+      # Make sure @remote_port is Integer, if not use default of 7147
+      @remote_port = Integer(@remote_port) rescue 7147
 
       # Create sockaddr from remote host and port.  This can raise
       # "SocketError: getaddrinfo: Name or service not known".

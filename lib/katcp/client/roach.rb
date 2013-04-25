@@ -140,7 +140,8 @@ module KATCP
     # Supported keys for the +opts+ Hash are:
     #
     #   :remote_host    Specifies hostname of KATCP server
-    #   :remote_port    Specifies port used by KATCP server (default 7147)
+    #   :remote_port    Specifies port used by KATCP server
+    #                   (default ENV['KATCP_PORT'] || 7147)
     #   :local_host     Specifies local interface to bind to (default nil)
     #   :local_port     Specifies local port to bind to (default nil)
     #   :socket_timeout Specifies timeout for socket operations
