@@ -112,22 +112,28 @@ module KATCP
               req_timeouts = 0
               while req_timeouts < 2
                 # Use select to wait with timeout for data or error
-                rd_wr_err = select([@socket], nil, nil, @socket_timeout)
+                rd_wr_ex = select([@socket], nil, nil, @socket_timeout)
 
                 # Handle timeout
-                if rd_wr_err.nil?
+                if rd_wr_ex.nil?
                   # Timeout, increment req_timeout if we're expecting a reply,
                   # then try again
                   req_timeouts += 1 if @reqname
                   next
                 end
 
-                # OK to read!
-                #
-                # TODO: Monkey-patch gets so that it recognizes "\r" or "\n" as
-                # line endings.  Currently only recognizes fixed strings, so for
-                # now go with "\n".
-                line = @socket.gets("\n")
+                # OK to (try to) read!
+                line = nil
+                begin
+                  # TODO: Monkey-patch gets so that it recognizes "\r" or "\n"
+                  # as line endings.  Currently only recognizes fixed strings,
+                  # so for now go with "\n".
+                  line = @socket.gets("\n")
+                rescue
+                  # Uh-oh, send double-bang error response, and give up
+                  @rxq.enq(['!!socket-error'])
+                  throw :giveup
+                end
 
                 # If EOF
                 if line.nil?
