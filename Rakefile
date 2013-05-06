@@ -26,6 +26,7 @@ spec = Gem::Specification.new do |s|
   # Files, Libraries, and Extensions
   s.files = %w[
     README
+    bin/katcpcmd.rb
     lib/katcp.rb
     lib/katcp/client.rb
     lib/katcp/client/roach.rb
@@ -38,7 +39,9 @@ spec = Gem::Specification.new do |s|
   s.require_paths = ['lib']
   #s.autorequire = nil
   #s.bindir = 'bin'
-  #s.executables = []
+  s.executables = %w[
+    katcpcmd.rb
+  ]
   #s.default_executable = nil
 
   # C compilation
