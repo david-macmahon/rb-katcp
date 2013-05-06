@@ -41,6 +41,8 @@ port = Integer(port) rescue 7147
 
 cmd = ARGV.shift
 
+exit_status = 0
+
 r = KATCP::RoachClient.new(host, port)
 
 if cmd
@@ -51,8 +53,12 @@ if cmd
   puts resp
 
   puts r.informs(true) if OPTS[:verbose]
+
+  exit_status = resp.ok? ? 0 : 1
 else
   puts r.informs(true)
 end
 
 r.close
+
+exit exit_status
