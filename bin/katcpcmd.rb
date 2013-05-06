@@ -50,11 +50,14 @@ if cmd
 
   resp = r.respond_to?(cmd) ? r.send(cmd, *ARGV) : r.request(cmd, *ARGV)
 
-  puts resp
+  if resp.is_a? KATCP::Response
+    puts resp
+    exit_status = resp.ok? ? 0 : 1
+  else
+    puts "got a #{resp.class}: #{resp.inspect}"
+  end
 
   puts r.informs(true) if OPTS[:verbose]
-
-  exit_status = resp.ok? ? 0 : 1
 else
   puts r.informs(true)
 end
