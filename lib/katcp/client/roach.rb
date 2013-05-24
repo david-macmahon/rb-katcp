@@ -260,6 +260,24 @@ module KATCP
     #                                provides convenient ways to read and write
     #                                to the TenGE device.
     #   :skip (unwanted device)      No method will be created.
+    #   A class name (custom)        A user-supplied class can be given to
+    #                                allow for customized device access.
+    #
+    # If a class name is specified, the method defined for the corresponding
+    # device will return an instance of the given class.  The constructor will
+    # be passed the KATCP::Client instance and a String specifying the device
+    # name.  Here is an example of a suitable class definition:
+    #
+    #   class MyDevice
+    #     def initialize(katcp_client, device_name)
+    #       # Save client and device name for future use
+    #       @katcp_client = katcp_client
+    #       @device_name  = device_name
+    #     end
+    #
+    #     # Other functionality defined here
+    #
+    #   end # class MyDevice
     #
     # Methods are only created for devices that actually exist on the device.
     # If no device exists for a given key, no methods will be created for that
@@ -267,9 +285,9 @@ module KATCP
     # created unless they are backed by an actual device.  Both reader and
     # writer methods are created for devices for which no key is present.
     #
-    # The value can also be an Array whose first element is a Symbol from the
-    # list above.  The remaining elements specify aliases to be created for the
-    # given attribute methods.
+    # The value can also be an Array whose first element is a Symbol (or class
+    # name) from the list above.  The remaining elements specify aliases to be
+    # created for the given attribute methods.
     #
     # RoachClient#device_typemap returns on empty Hash so all devices are
     # treated as read/write registers by default.  Gateware specific subclasses
@@ -278,9 +296,9 @@ module KATCP
     #
     # Example: The following would lead to the creation of the following
     # methods and aliases: "input_selector", "input_selector=", "insel",
-    # "insel=", "switch_gbe_status", "switch_gbe", "adc_rms_levels" (assuming
-    # the named devices all exist!).  No methods would be created for the
-    # device named "unwanted_reg" even if it exists.
+    # "insel=", "switch_gbe_status", "switch_gbe", "adc_rms_levels", and
+    # "my_device" (assuming the named devices all exist!).  No methods would be
+    # created for the device named "unwanted_reg" even if it exists.
     #
     #   class MyRoachDesign < RoachClient
     #     DEVICE_TYPEMAP = {
@@ -288,6 +306,7 @@ module KATCP
     #       :switch_gbe_status => :roreg,
     #       :switch_gbe        => :tenge,
     #       :adc_rms_levels    => :bram,
+    #       :my_device         => MyDevice,
     #       :unwanted_reg      => :skip
     #     }
     #
