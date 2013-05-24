@@ -58,6 +58,13 @@ if cmd
   when KATCP::Client
     # Print log informs
     puts resp.informs(true).grep(/^#log/)
+  # Handle programmed? and other true/false operations
+  when true
+    puts resp if OPTS[:verbose]
+    exit_status = 0
+  when false
+    puts resp if OPTS[:verbose]
+    exit_status = 1
   else
     puts "got a #{resp.class}: #{resp.inspect}"
   end
