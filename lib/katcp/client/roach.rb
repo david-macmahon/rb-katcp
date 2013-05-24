@@ -467,11 +467,12 @@ module KATCP
       begin
         # Adjust @socket_timeout if programming a bitstream
         @socket_timeout = PROGDEV_SOCKET_TIMEOUT if args[0]
-        request(:progdev, *args)
+        resp = request(:progdev, *args)
       ensure
         @socket_timeout = prev_socket_timeout
       end
       define_device_attrs
+      resp
     end
 
     # Returns true if currently programmed (specifically, it is equivalent to
