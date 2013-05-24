@@ -46,13 +46,18 @@ exit_status = 0
 r = KATCP::RoachClient.new(host, port)
 
 if cmd
-  puts r.informs(true) if OPTS[:verbose]
+  informs = r.informs(true)
+  puts informs if OPTS[:verbose]
 
   resp = r.respond_to?(cmd) ? r.send(cmd, *ARGV) : r.request(cmd, *ARGV)
 
-  if resp.is_a? KATCP::Response
+  case resp
+  when KATCP::Response
     puts resp
     exit_status = resp.ok? ? 0 : 1
+  when KATCP::Client
+    # Print log informs
+    puts resp.informs(true).grep(/^#log/)
   else
     puts "got a #{resp.class}: #{resp.inspect}"
   end
