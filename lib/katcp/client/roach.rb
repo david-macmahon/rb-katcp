@@ -97,7 +97,48 @@ module KATCP
     def []=(idx, mac)
       write64(0xc00+2*idx, mac)
     end
-  end
+  end # class TenGE
+
+  # Class used to access CASPER Snapshot blocks.  +device_name+ must be used
+  # with the bram or dram device in the snapshot block.  Other devices in the
+  # snapshot block may be hidden/ignored with :skip in the device_typemap or
+  # may be exposed/used if desired.  Currently this class only uses the memory
+  # element and the "trig" register; it does not directly use the "status"
+  # register or the optional "trig_offset" or "tr_en_cnt" registers.
+  class Snapshot < Bram
+    def initialize(katcp_client, device_name)
+      super
+      @ctrl_name = device_name.sub(/_[bd]ram$/, '_ctrl')
+    end
+
+    # Validate and massage method name
+    def self.method_name(name)
+      if name !~ /_[bd]ram$/
+        raise "invalid name '#{name}' for #{self.name}"
+      end
+      name.sub!(/_[bd]ram$/, '')
+    end
+
+    # Trigger a new snapshot.  +opts+ can be used to control the trigger type
+    # using the :trigger key and the write enable using the :wren key:
+    #
+    #   :trigger => :internal means trigger right away
+    #   :trigger => :external means trigger on the block's trigger input
+    #   :wren => :internal means to capture every FPGA clock cycle
+    #   :wren => :external means to capture when the block's we input is high
+    #
+    # The default behavior is :internal for both.
+    def trigger(opts={})
+      # Assume internal for both
+      trigval = 6
+      # Turn off bits if external
+      trigval ^= 2 if /^ext/ =~ (opts[:trigger]||opts[:trig])
+      trigval ^= 4 if /^ext/ =~  opts[:wren]
+      @katcp_client.write(@ctrl_name, trigval)
+      @katcp_client.write(@ctrl_name, trigval|1)
+      @katcp_client.write(@ctrl_name, trigval)
+    end
+  end # class Snapshot
 
   # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
   # implementation that runs on ROACH boards.  In addition to providing
@@ -213,14 +254,19 @@ module KATCP
           type, *aliases = typemap[dev] || typemap[dev.to_sym]
           next if type == :skip
           # Dynamically define methods and aliases
-          case type
-          when Class;  device_object(type,  dev, *aliases)
-          when :bram;  device_object(Bram,  dev, *aliases)
-          when :tenge; device_object(TenGE, dev, *aliases)
-          when :roreg; roreg(dev, *aliases)
-          # else :rwreg or nil (or anything else for that matter) so treat it
-          # as R/W register.
-          else rwreg(dev, *aliases)
+          begin
+            case type
+            when Class;  device_object(type,  dev, *aliases)
+            when :bram;  device_object(Bram,  dev, *aliases)
+            when :tenge; device_object(TenGE, dev, *aliases)
+            when :snap;  device_object(Snapshot, dev, *aliases)
+            when :roreg; roreg(dev, *aliases)
+            # else :rwreg or nil (or anything else for that matter) so treat it
+            # as R/W register.
+            else rwreg(dev, *aliases)
+            end
+          rescue => e
+            STDERR.puts e
           end
         end
       end
@@ -305,6 +351,14 @@ module KATCP
     #                                will be created.  The returned TenGE object
     #                                provides convenient ways to read and write
     #                                to the TenGE device.
+    #   :snap (Snapshot)             A reader method returning a Snapshot object
+    #                                will be created.  The returned Snapshot
+    #                                object provides a trigger method and acts
+    #                                like a Bram object for the Snapshot's
+    #                                memory element.  Must be used with the
+    #                                snapshot block's BRAM (or DRAM) device.
+    #                                and write
+    #                                to the Bram device.
     #   :skip (unwanted device)      No method will be created.
     #   A class name (custom)        A user-supplied class can be given to
     #                                allow for customized device access.
@@ -423,6 +477,9 @@ module KATCP
     def device_object(clazz, name, *aliases) # :nodoc:
       name = name.to_s
       method_name = name.gsub('/', '_')
+      if clazz.respond_to?(:method_name)
+        method_name = clazz.method_name(method_name)
+      end
       instance_eval <<-"_end"
         class << self
           def #{method_name}()
