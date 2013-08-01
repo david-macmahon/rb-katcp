@@ -146,9 +146,12 @@ module KATCP
     #   :local_port     Specifies local port to bind to (default nil)
     #   :socket_timeout Specifies timeout for socket operations
     #                   (default DEFAULT_SOCKET_TIMEOUT)
-    #   :typemap        Provides a default device typemap (default {}).
-    #                   See #device_typemap for details.
+    #   :typemap        Provides a way to override the default device typemap
+    #                   (default {}).  See #device_typemap for details.
     def initialize(*args)
+      # If final arg is a Hash, pop it off
+      @opts = (Hash === args[-1]) ? args.pop : {}
+
       # List of all devices
       @devices = [];
       # List of dynamically defined device attrs (readers only, writers implied)
@@ -156,7 +159,11 @@ module KATCP
       # @device objects is a Hash of created device objects: key is Class,
       # value is a Hash mapping device name to instance of Class.
       @device_objects = {}
-      # Call super *after* initializing subclass instance variables
+      # Merge @opts[:typemap] (if given) into device_typemap.
+      # This must be done *before* calling super.
+      device_typemap.merge!(@opts[:typemap]) if @opts[:typemap]
+      # Call super *after* initializing instance variables and possibly
+      # updating typemap.
       super(*args)
     end
 
@@ -237,6 +244,45 @@ module KATCP
 
     protected :undefine_device_attrs
 
+    # This is the default (empty) typemap.  It exists here so that subclasses
+    # (and their subclasses) have the option of using the following idiom to
+    # create their own custom typemap that includes their superclass's typemap:
+    #
+    #   class SomeClass < KATCP::RoachClient
+    #     DEVICE_TYPEMAP = superclass::DEVICE_TYPEMAP.merge({
+    #       :some_device => :rwreg
+    #     })
+    #     ...
+    #   end
+    #
+    #   class MyClass < SomeClass
+    #     DEVICE_TYPEMAP = superclass::DEVICE_TYPEMAP.merge({
+    #       :switch_gbe_status => :roreg,
+    #       :switch_gbe        => :tenge,
+    #       :adc_rms_levels    => :bram
+    #     })
+    #     ...
+    #   end
+    #
+    # As defined above, MyClass::DEVICE_TYPEMAP will be:
+    #
+    #   {
+    #     :some_device       => :rwreg,
+    #     :switch_gbe_status => :roreg,
+    #     :switch_gbe        => :tenge,
+    #     :adc_rms_levels    => :bram
+    #   }
+    #
+    # Because the superclass of SomeClass is KATCP::RoachClient, the
+    # "superclass::DEVICE_TYPEMAP.merge" part is optional in SomeClass, but it
+    # is still recommended since future versions of KATCP::RoachClient may have
+    # a non-empty typemap.
+    DEVICE_TYPEMAP = {}
+
+    # Returns the default device typemap Hash (either the one passed to the
+    # constructor or an empty Hash).  Design specific subclasses can override
+    # this method to return a design specific device typemap.
+    #
     # This method's return value controls how methods and aliases are
     # dynamically generated for devices within the ROACH gateware.  If
     # #device_typemap returns +nil+ or an empty Hash, all devices will be
@@ -301,25 +347,28 @@ module KATCP
     # created for the device named "unwanted_reg" even if it exists.
     #
     #   class MyRoachDesign < RoachClient
-    #     DEVICE_TYPEMAP = {
+    #     DEVICE_TYPEMAP = superclass::DEVICE_TYPEMAP.merge({
     #       :input_selector    => [:rwreg, :insel],
     #       :switch_gbe_status => :roreg,
     #       :switch_gbe        => :tenge,
     #       :adc_rms_levels    => :bram,
     #       :my_device         => MyDevice,
     #       :unwanted_reg      => :skip
-    #     }
+    #     })
     #
     #     def device_typemap
-    #       DEVICE_TYPEMAP
+    #       @device_typemap ||= DEVICE_TYPEMAP.dup
     #     end
     #   end
     #
-    # Returns the default device typemap Hash (either the one passed to the
-    # constructor or an empty Hash).  Design specific subclasses can override
-    # this method to return a design specific device typemap.
+    # If the user passes a typemap Hash to the constructor, that Hash is merged
+    # into the Hash returned by device_typemap.  This can have side effects
+    # that might be unwanted if device_typemap returns a Hash that is
+    # referenced by a class constant.  To avoid that, it is recommended that
+    # device_typemap return the instance variable @device_typemap that is
+    # lazily initialized with a copy of the class constant as shown above.
     def device_typemap
-      (@opts && @opts[:typemap]) || {}
+      @device_typemap ||= DEVICE_TYPEMAP.dup
     end
 
     # Allow subclasses to create read accessor method (with optional aliases)
