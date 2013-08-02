@@ -68,6 +68,8 @@ module KATCP
     # Returns xaui status word.  Bits 2 through 5 are lane sync, bit 6 is
     # channel bonding status.
     def xaui_status; get(9); end
+    # Returns true if all four lanes are sync'd and bonded.
+    def xaui_status_ok?; (get(9) & 0b01111100) == 0b01111100; end
     # Four least significant bits represent sync status for each lane.
     #   1 bit = lane sync OK
     #   0 bit = lane sync BAD
@@ -77,7 +79,7 @@ module KATCP
     # Returns true if #xaui_sync returns 15
     def xaui_sync_ok?; xaui_sync == 0b1111; end
     # Returns true if all four XAUI lanes are bonded
-    def xaui_bonded?; (get(9) >> 6) & 1; end
+    def xaui_bonded?; ((get(9) >> 6) & 1) == 1; end
 
     # Get current value of rx_eq_mix parameter.
     def rx_eq_mix   ; (get(10) >> 24) & 0xff; end
