@@ -142,6 +142,28 @@ module KATCP
     end
   end # class Snapshot
 
+  # Class used to access QDR controller cores
+  class QdrCtrl < Bram
+    # Resets the QDR controller (re-calibrates)
+    def reset
+      self[0] = 0
+      self[1] = 0xffff_ffff
+      self[0] = 0
+    end
+
+    # Returns state of cal_fail bit
+    def cal_fail?
+      # Bit 8
+      (self[1] & (1<<8)) != 0
+    end
+
+    # Returns state of phy_rdy bit (
+    def phy_rdy?
+      # Bit 0
+      (self[1] & (1<<0)) != 0
+    end
+  end
+
   # Facilitates talking to <tt>tcpborphserver2</tt>, a KATCP server
   # implementation that runs on ROACH boards.  In addition to providing
   # convenience wrappers around <tt>tcpborphserver2</tt> requests, it also adds
@@ -258,11 +280,12 @@ module KATCP
           # Dynamically define methods and aliases
           begin
             case type
-            when Class;  device_object(type,  dev, *aliases)
-            when :bram;  device_object(Bram,  dev, *aliases)
-            when :tenge; device_object(TenGE, dev, *aliases)
-            when :snap;  device_object(Snapshot, dev, *aliases)
-            when :roreg; roreg(dev, *aliases)
+            when Class;    device_object(type,  dev, *aliases)
+            when :bram;    device_object(Bram,  dev, *aliases)
+            when :tenge;   device_object(TenGE, dev, *aliases)
+            when :snap;    device_object(Snapshot, dev, *aliases)
+            when :qdrctrl; device_object(QdrCtrl, dev, *aliases)
+            when :roreg;   roreg(dev, *aliases)
             # else :rwreg or nil (or anything else for that matter) so treat it
             # as R/W register.
             else rwreg(dev, *aliases)
@@ -359,8 +382,11 @@ module KATCP
     #                                like a Bram object for the Snapshot's
     #                                memory element.  Must be used with the
     #                                snapshot block's BRAM (or DRAM) device.
-    #                                and write
-    #                                to the Bram device.
+    #   :qdrctrl (QDR controller)    A reader method returning a QdrCtrl object
+    #                                will be created.  The returned QdrCtrl
+    #                                object provides methods to reset the QDR
+    #                                controller and check its cal_fail and
+    #                                phy_rdy status bits.
     #   :skip (unwanted device)      No method will be created.
     #   A class name (custom)        A user-supplied class can be given to
     #                                allow for customized device access.
