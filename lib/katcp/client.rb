@@ -383,7 +383,7 @@ module KATCP
     # call-seq:
     #   sensor_dump(*args) -> KATCP::Response
     #
-    # Dumps the sensor tree.
+    # Dumps the sensor tree. [obsolete?]
     def sensor_dump(*args)
       request(:sensor_dump, *args)
     end
