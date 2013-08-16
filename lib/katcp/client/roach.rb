@@ -616,6 +616,11 @@ module KATCP
     # attributes that were dynamically defined for the previous design are
     # removed.
     def progdev(*args)
+      # Clear args (i.e. remove all elements) if first element is nil.
+      # This also clears args if it is empty, but that is OK since it is
+      # essentially a no-op.  Any time saved by not clearing an empty args
+      # would be lost by checking whether args is already empty! :-)
+      args.clear if args[0].nil?
       prev_socket_timeout = @socket_timeout
       begin
         # Adjust @socket_timeout if programming a bitstream
