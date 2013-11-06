@@ -214,8 +214,11 @@ module KATCP
     #   :typemap        Provides a way to override the default device typemap
     #                   (default {}).  See #device_typemap for details.
     def initialize(*args)
-      # If final arg is a Hash, pop it off
-      @opts = (Hash === args[-1]) ? args.pop : {}
+      # @opts may be set in the initialize method of a subclass before it calls
+      # this initialize method via "super".  If so, the subclass would likely
+      # have stripped off the options Hash, so we need to make sure we only set
+      # @opts if it has not yet been set.
+      @opts ||= (Hash === args[-1]) ? args.pop : {}
 
       # List of all devices
       @devices = [];

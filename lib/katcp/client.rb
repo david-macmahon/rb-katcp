@@ -34,8 +34,11 @@ module KATCP
     #   :socket_timeout Specifies timeout for socket operations
     #                   (default DEFAULT_SOCKET_TIMEOUT)
     def initialize(*args)
-      # If final arg is a Hash, pop it off
-      @opts = (Hash === args[-1]) ? args.pop : {}
+      # @opts may be set in the initialize method of a subclass before it calls
+      # this initialize method via "super".  If so, the subclass would likely
+      # have stripped off the options Hash, so we need to make sure we only set
+      # @opts if it has not yet been set.
+      @opts ||= (Hash === args[-1]) ? args.pop : {}
 
       # Save parameters
       remote_host, remote_port, local_host, local_port = args
