@@ -70,6 +70,18 @@ module KATCP
     # Set local rx port to 16-bit integer +p+.
     def port=(p); set(8, (get(8) & 0xffff0000) | (p & 0xffff)); end
 
+    # Returns true if the 10 GbE core is enabled
+    def is_enabled?; (get(8) & 0x0001_0000) != 0; end
+    # Enable the 10 GbE core
+    def enable;  set(8, (get(8) |  0x0001_0000)); end
+    # Disable the 10 GbE core
+    def disable; set(8, (get(8) & ~0x0001_0000)); end
+
+    # Get state of soft_reset bit (0 or 1)
+    def soft_reset; (get(8) & 0x0100_0000) >> 24; end
+    # Set state of soft_reset bit (0 or 1)
+    def soft_reset=(b); set(8, (get(8) & ~0x0100_0000) | ((b & 1) << 24)); end
+
     # Returns xaui status word.  Bits 2 through 5 are lane sync, bit 6 is
     # channel bonding status.
     def xaui_status; get(9); end
