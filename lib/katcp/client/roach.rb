@@ -134,6 +134,42 @@ module KATCP
       idx &= 0xff
       write64(0xc00+2*idx, mac)
     end
+
+    # Prints 10GbE core details.  If +arp+ is true, include the ARP table.
+    # Format follows the CASPER "corr" package convention.
+    def print_details(arp=false)
+        puts '------------------------'
+        puts "#{name} Configuration..."
+        puts "My MAC : #{mac.to_mac}"
+        puts "Gateway: #{gw.to_ip}"
+        myip = ip.to_ip
+        puts "My IP  : #{myip}"
+        puts "My Port: #{port}"
+
+        puts "Fabric interface is currently: #{is_enabled? ? 'En' : 'Dis'}abled"
+
+        status = xaui_status
+        printf "XAUI Status: %02X\n", status
+        puts "\tlane sync 0: #{(status>>2)&1}"
+        puts "\tlane sync 1: #{(status>>3)&1}"
+        puts "\tlane sync 2: #{(status>>4)&1}"
+        puts "\tlane sync 3: #{(status>>5)&1}"
+        puts "\tLane bond  : #{(status>>6)&1}"
+
+        puts 'XAUI PHY config:'
+        printf "\tRX_eq_mix   : %2X\n", rx_eq_mix
+        printf "\tRX_eq_pol   : %2X\n", rx_eq_pol
+        printf "\tTX_pre-emph : %2X\n", tx_preemph
+        printf "\tTX_diff_ctrl: %2X\n", tx_diff_ctrl
+
+        if arp
+            subnet = myip.mask(24)
+            puts 'ARP Table:'
+            for i in 0..255
+                printf "IP: %-15s -> MAC: %s\n", subnet|i, self[i].to_mac
+            end
+        end
+    end # print_details
   end # class TenGE
 
   # Class used to access CASPER Snapshot blocks.  +device_name+ must be used
