@@ -135,6 +135,20 @@ module KATCP
       write64(0xc00+2*idx, mac)
     end
 
+    # Returns the entire ARP table as a 256 element Array.  This is far more
+    # effcient than accessing multiple entries one-by-one.
+    def arp_table
+      get(0xc00, 512).ntoh.to_s.unpack('Q>*')
+    end
+
+    # Sets the entire ARP table from a 256 element Array.  This is far more
+    # effcient than accessing multiple entries one-by-one.
+    def arp_table=(arp)
+      # Mask off upper 16 bytes
+      arp = arp.map {|mac| mac & 0x0000_ffff_ffff_ffff}
+      set(0xc00, arp.pack('Q>*'))
+    end
+
     # Prints 10GbE core details.  If +arp+ is true, include the ARP table.
     # Format follows the CASPER "corr" package convention.
     def print_details(arp=false)
@@ -165,8 +179,8 @@ module KATCP
         if arp
             subnet = myip.mask(24)
             puts 'ARP Table:'
-            for i in 0..255
-                printf "IP: %-15s -> MAC: %s\n", subnet|i, self[i].to_mac
+            arp_table.each_with_index do |mac, i|
+                printf "IP: %-15s -> MAC: %s\n", subnet|i, mac.to_mac
             end
         end
     end # print_details
