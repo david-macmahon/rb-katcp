@@ -1,3 +1,4 @@
+require 'ipaddr'
 require 'katcp/client'
 
 # Holds KATCP related classes etc.
@@ -722,6 +723,13 @@ module KATCP
     #
     # Start a tgtap instance.
     def tap_start(tap_device, register_name, ip_address, *args)
+      # Ensure ip_address is in proper format
+      ip_address = IPAddr.new(ip_address,Socket::AF_INET).to_s
+      # If mac is Numeric, convert to String
+      if Numeric === args[1]
+        args[1] = '%02X:%02X:%02X:%02X:%02X:%02X' %
+                  [args[1]].pack('Q>').unpack('C8')[2,6]
+      end
       request(:tap_start, tap_device, register_name, ip_address, *args)
     end
 
