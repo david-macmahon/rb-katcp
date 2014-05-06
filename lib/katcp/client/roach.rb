@@ -108,12 +108,16 @@ module KATCP
     def tx_diff_ctrl; (get(10)      ) & 0xff; end
 
     # Returns current value of ARP table entry +idx+.
+    # Only the least significant byte of +idx+ is used.
     def [](idx)
+      idx &= 0xff
       read64(0xc00+2*idx)
     end
 
     # Sets value of ARP table entry +idx+ to +mac+.
+    # Only the least significant byte of +idx+ is used.
     def []=(idx, mac)
+      idx &= 0xff
       write64(0xc00+2*idx, mac)
     end
   end # class TenGE
