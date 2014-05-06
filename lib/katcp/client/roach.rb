@@ -10,6 +10,11 @@ module KATCP
       @bram_name = bram_name
     end
 
+    # Returns the name of the underlying gateware device.
+    def name
+      @bram_name
+    end
+
     # Calls @katcp_client.bulkread(@bram_name, *args)
     def [](*args)
       @katcp_client.bulkread(@bram_name, *args)
