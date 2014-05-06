@@ -1,6 +1,19 @@
 require 'ipaddr'
 require 'katcp/client'
 
+# Make it easy to convert Integers to IPAddr objects or MAC Strings.
+class Integer
+  # Convert +self+ to an IPAddr object.
+  def to_ip
+    IPAddr.new(self, Socket::AF_INET)
+  end
+  # Convert +self+ to a MAC String.
+  def to_mac
+    '%02x:%02x:%02x:%02x:%02x:%02x' %
+      [self].pack('Q>').unpack('C8')[2,6]
+  end
+end
+
 # Holds KATCP related classes etc.
 module KATCP
 
@@ -725,11 +738,8 @@ module KATCP
     def tap_start(tap_device, register_name, ip_address, *args)
       # Ensure ip_address is in proper format
       ip_address = IPAddr.new(ip_address,Socket::AF_INET).to_s
-      # If mac is Numeric, convert to String
-      if Numeric === args[1]
-        args[1] = '%02X:%02X:%02X:%02X:%02X:%02X' %
-                  [args[1]].pack('Q>').unpack('C8')[2,6]
-      end
+      # If mac is Integer, convert to String
+      args[1] = args[1].to_mac if Integer === args[1]
       request(:tap_start, tap_device, register_name, ip_address, *args)
     end
 
