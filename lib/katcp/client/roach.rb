@@ -9,8 +9,7 @@ class Integer
   end
   # Convert +self+ to a MAC String.
   def to_mac
-    '%02x:%02x:%02x:%02x:%02x:%02x' %
-      [self].pack('Q>').unpack('C8')[2,6]
+    [self].pack('Q>').unpack('x2 H2H2 H2H2 H2H2').join(':')
   end
 end
 
