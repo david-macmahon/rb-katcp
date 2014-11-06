@@ -30,6 +30,7 @@ spec = Gem::Specification.new do |s|
     lib/katcp.rb
     lib/katcp/client.rb
     lib/katcp/client/roach.rb
+    lib/katcp/client/sfp.rb
     lib/katcp/irb.rb
     lib/katcp/response.rb
     lib/katcp/util.rb

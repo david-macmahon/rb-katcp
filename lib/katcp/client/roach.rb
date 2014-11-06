@@ -1,5 +1,6 @@
 require 'ipaddr'
 require 'katcp/client'
+require 'katcp/client/sfp'
 
 # Make it easy to convert Integers to IPAddr objects or MAC Strings.
 class Integer
@@ -203,6 +204,7 @@ module KATCP
         raise "invalid name '#{name}' for #{self.name}"
       end
       name.sub!(/_[bd]ram$/, '')
+      name
     end
 
     # Trigger a new snapshot.  +opts+ can be used to control the trigger type
@@ -367,11 +369,12 @@ module KATCP
           # Dynamically define methods and aliases
           begin
             case type
-            when Class;    device_object(type,  dev, *aliases)
-            when :bram;    device_object(Bram,  dev, *aliases)
-            when :tenge;   device_object(TenGE, dev, *aliases)
+            when Class;    device_object(type,     dev, *aliases)
+            when :bram;    device_object(Bram,     dev, *aliases)
+            when :tenge;   device_object(TenGE,    dev, *aliases)
+            when :sfp;     device_object(Sfp,      dev, *aliases)
             when :snap;    device_object(Snapshot, dev, *aliases)
-            when :qdrctrl; device_object(QdrCtrl, dev, *aliases)
+            when :qdrctrl; device_object(QdrCtrl,  dev, *aliases)
             when :roreg;   roreg(dev, *aliases)
             # else :rwreg or nil (or anything else for that matter) so treat it
             # as R/W register.
@@ -402,9 +405,9 @@ module KATCP
 
     protected :undefine_device_attrs
 
-    # This is the default (empty) typemap.  It exists here so that subclasses
-    # (and their subclasses) have the option of using the following idiom to
-    # create their own custom typemap that includes their superclass's typemap:
+    # This is the default typemap.  Subclasses (and their subclasses) are
+    # recommended to use the following idiom to create their own custom typemap
+    # that includes their superclass's typemap:
     #
     #   class SomeClass < KATCP::RoachClient
     #     DEVICE_TYPEMAP = superclass::DEVICE_TYPEMAP.merge({
@@ -431,11 +434,21 @@ module KATCP
     #     :adc_rms_levels    => :bram
     #   }
     #
-    # Because the superclass of SomeClass is KATCP::RoachClient, the
-    # "superclass::DEVICE_TYPEMAP.merge" part is optional in SomeClass, but it
-    # is still recommended since future versions of KATCP::RoachClient may have
-    # a non-empty typemap.
-    DEVICE_TYPEMAP = {}
+    # The default typemap handles the SFP+ controller.
+    DEVICE_TYPEMAP = {
+      :sfp_gpio_data_ded => :skip,
+      :sfp_gpio_data_in  => :skip,
+      :sfp_gpio_data_oe  => :skip,
+      :sfp_gpio_data_out => :skip,
+      :sfp_mdio_sel      => :skip,
+      :sfp_op_addr       => :skip,
+      :sfp_op_data       => :skip,
+      :sfp_op_dbg        => :skip,
+      :sfp_op_dbg1       => :skip,
+      :sfp_op_issue      => :skip,
+      :sfp_op_result     => :skip,
+      :sfp_op_type       => :sfp
+    }
 
     # Returns the default device typemap Hash (either the one passed to the
     # constructor or an empty Hash).  Design specific subclasses can override
@@ -463,6 +476,10 @@ module KATCP
     #                                will be created.  The returned TenGE object
     #                                provides convenient ways to read and write
     #                                to the TenGE device.
+    #   :sfp (SFP controller)        A reader method returning an Sfp object
+    #                                will be created.  The returned Sfp object
+    #                                provides convenient ways to interact with
+    #                                the SFP+ controller and the SFP+ phys.
     #   :snap (Snapshot)             A reader method returning a Snapshot object
     #                                will be created.  The returned Snapshot
     #                                object provides a trigger method and acts
