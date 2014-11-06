@@ -361,12 +361,18 @@ module KATCP
       @devices.each do |dev|
         # TODO sanitize dev in case it is invalid method name
 
-        # Define methods unless they conflict with existing methods
+        # Determine type (and aliases) of this device
+        type, *aliases = typemap[dev] || typemap[dev.to_sym]
+        next if type == :skip
+        # Handle nil alias
+        if aliases.any? {|o| o.nil?}
+          aliases.compact!
+          if !aliases.empty?
+            dev = aliases.shift
+          end
+        end
+        # Dynamically define methods unless they conflict with existing methods
         if ! respond_to?(dev) && ! respond_to?("#{dev}=")
-          # Determine type (and aliases) of this device
-          type, *aliases = typemap[dev] || typemap[dev.to_sym]
-          next if type == :skip
-          # Dynamically define methods and aliases
           begin
             case type
             when Class;    device_object(type,     dev, *aliases)
@@ -519,7 +525,12 @@ module KATCP
     #
     # The value can also be an Array whose first element is a Symbol (or class
     # name) from the list above.  The remaining elements specify aliases to be
-    # created for the given attribute methods.
+    # created for the given attribute methods.  If `nil` is specified for an
+    # alias, then the attribute methods for the device will be named after the
+    # first alias and the remaining alias names will be used for aliases.  This
+    # can be used to prevent (attempted) creation of a device name, which can
+    # be useful if the device name is not desired as method name (e.g. if it
+    # conflicts with a Ruby keyword).
     #
     # RoachClient#device_typemap returns on empty Hash so all devices are
     # treated as read/write registers by default.  Gateware specific subclasses
